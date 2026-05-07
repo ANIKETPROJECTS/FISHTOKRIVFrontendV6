@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const BRAND_BLUE = "#364F9F";
 const BRAND_RED = "#F05B4E";
+const BRAND_ORANGE = "#F97316";
 
 interface OtpModalProps {
   open: boolean;
@@ -74,6 +75,7 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [focusedOtpIndex, setFocusedOtpIndex] = useState<number | null>(null);
   const { toast } = useToast();
   const { refetch } = useCustomer();
 
@@ -303,29 +305,35 @@ export function OtpModal({ open, onClose }: OtpModalProps) {
                 </div>
               </div>
 
-              {/* OTP Boxes */}
+              {/* OTP Boxes — white inside, blue border, orange on focus */}
               <div className="flex gap-3 justify-center mb-5">
-                {otpRefs.map((ref, i) => (
-                  <input
-                    key={i}
-                    ref={ref}
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={otp[i]}
-                    onChange={e => handleOtpChange(i, e.target.value)}
-                    onKeyDown={e => handleOtpKeyDown(i, e)}
-                    onPaste={handleOtpPaste}
-                    className="w-[62px] h-[62px] text-center text-2xl font-bold rounded-2xl outline-none border-2 focus:scale-[1.05] transition-transform"
-                    style={{
-                      borderColor: otp[i] ? BRAND_BLUE : "#e2e8f0",
-                      background: otp[i] ? `${BRAND_BLUE}0A` : "#f8fafc",
-                      color: "#1e293b",
-                      caretColor: BRAND_BLUE,
-                    }}
-                    data-testid={`input-otp-digit-${i}`}
-                  />
-                ))}
+                {otpRefs.map((ref, i) => {
+                  const isFocused = focusedOtpIndex === i;
+                  return (
+                    <input
+                      key={i}
+                      ref={ref}
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={otp[i]}
+                      onChange={e => handleOtpChange(i, e.target.value)}
+                      onKeyDown={e => handleOtpKeyDown(i, e)}
+                      onPaste={handleOtpPaste}
+                      onFocus={() => setFocusedOtpIndex(i)}
+                      onBlur={() => setFocusedOtpIndex(null)}
+                      className="w-[62px] h-[62px] text-center text-2xl font-bold rounded-2xl outline-none border-2 focus:scale-[1.05] transition-all duration-200"
+                      style={{
+                        borderColor: isFocused ? BRAND_ORANGE : BRAND_BLUE,
+                        background: "white",
+                        color: "#1e293b",
+                        caretColor: BRAND_ORANGE,
+                        boxShadow: isFocused ? `0 0 0 3px ${BRAND_ORANGE}33` : "none",
+                      }}
+                      data-testid={`input-otp-digit-${i}`}
+                    />
+                  );
+                })}
               </div>
 
               {/* Verify button — blue */}

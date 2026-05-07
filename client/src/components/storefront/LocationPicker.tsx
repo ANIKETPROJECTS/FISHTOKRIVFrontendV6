@@ -1,10 +1,50 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, ChevronLeft, MapPin, Check, Navigation, Loader2, AlertCircle, CheckCircle2, Search } from "lucide-react";
+import { X, ChevronLeft, MapPin, Check, Loader2, AlertCircle, CheckCircle2, Search } from "lucide-react";
 import { useHub, SuperHub, SubHub } from "@/context/HubContext";
 import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
+import googleMapsIcon from "@assets/logo_(15)_1778186984164.png";
 
 type GeoStatus = "idle" | "detecting" | "serviceable" | "unserviceable" | "denied" | "error";
+
+const BRAND_BLUE = "#364F9F";
+const BRAND_ORANGE = "#F97316";
+
+/* ── Typewriter placeholder ─────────────────────────────────────────── */
+const TYPEWRITER_PHRASES = [
+  "Search area, locality, landmark...",
+  "Try 'Thane', 'Bandra', 'Andheri'...",
+  "Enter a pincode...",
+  "Search by landmark...",
+];
+
+function useTypewriter(phrases: string[], speed = 60, pause = 1800) {
+  const [displayed, setDisplayed] = useState("");
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [charIdx, setCharIdx] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const current = phrases[phraseIdx];
+    let timeout: ReturnType<typeof setTimeout>;
+
+    if (!deleting && charIdx < current.length) {
+      timeout = setTimeout(() => setCharIdx(c => c + 1), speed);
+    } else if (!deleting && charIdx === current.length) {
+      timeout = setTimeout(() => setDeleting(true), pause);
+    } else if (deleting && charIdx > 0) {
+      timeout = setTimeout(() => setCharIdx(c => c - 1), speed / 2);
+    } else if (deleting && charIdx === 0) {
+      setDeleting(false);
+      setPhraseIdx(p => (p + 1) % phrases.length);
+    }
+
+    setDisplayed(current.slice(0, charIdx));
+    return () => clearTimeout(timeout);
+  }, [charIdx, deleting, phraseIdx, phrases, speed, pause]);
+
+  return displayed;
+}
 
 /* ── Photon (Komoot) for forward search ─────────────────────────────── */
 interface PhotonFeature {
@@ -85,9 +125,12 @@ export function LocationPicker() {
   const [searchStatus, setSearchStatus] = useState<"idle" | "serviceable" | "unserviceable">("idle");
   const [searchMessage, setSearchMessage] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const typewriterPlaceholder = useTypewriter(TYPEWRITER_PHRASES);
 
   const { data: superHubs = [], isLoading: loadingSuper } = useQuery<SuperHub[]>({
     queryKey: ["/api/hubs/super"],
@@ -247,12 +290,13 @@ export function LocationPicker() {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closePicker} />
 
       {/* Main panel */}
-      <div className="relative bg-white w-full h-full sm:max-w-md rounded-none border-l border-border/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 max-h-screen">
+      <div className="relative bg-white w-full h-full sm:max-w-md rounded-none border-l border-border/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 max-h-screen font-[Poppins,sans-serif]">
 
         {/* Premium blue header */}
         <div className="shrink-0 bg-[#364F9F] px-5 pt-5 pb-5">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-2">
+          {/* Top row: back button (if sub step) + close button */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
               {step === "sub" && (
                 <button
                   onClick={() => setStep("super")}
@@ -262,7 +306,6 @@ export function LocationPicker() {
                   <ChevronLeft className="w-5 h-5 text-white" />
                 </button>
               )}
-              <FishTokriLogo className="h-7 w-auto brightness-0 invert" />
             </div>
             <button
               onClick={closePicker}
@@ -273,48 +316,63 @@ export function LocationPicker() {
             </button>
           </div>
 
-          <h2 className="text-xl font-bold text-white leading-tight mt-1">
-            {step === "sub" ? `Areas in ${pickedSuper?.name}` : "Select your location"}
-          </h2>
-          <p className="text-white/70 text-sm mt-0.5">
-            {step === "sub" ? "Pick your delivery area below" : "Search your area or detect automatically"}
-          </p>
+          {/* Centered logo */}
+          <div className="flex justify-center mb-4">
+            <FishTokriLogo className="h-10 w-auto brightness-0 invert" />
+          </div>
 
-          {/* Current location pill */}
+          {/* Title + subtitle */}
+          <div className="text-center mb-3">
+            <h2 className="text-lg font-semibold text-white leading-tight">
+              {step === "sub" ? `Areas in ${pickedSuper?.name}` : "Select your location"}
+            </h2>
+            <p className="text-white/70 text-sm mt-0.5 font-normal">
+              {step === "sub" ? "Pick your delivery area below" : "Search your area or detect automatically"}
+            </p>
+          </div>
+
+          {/* Current location pill — orange bg, white text/icon */}
           {(selectedSubHub || selectedSuperHub) && (
-            <div className="flex items-center gap-1.5 mt-3 bg-white/15 rounded-full px-3 py-1.5 w-fit">
-              <MapPin className="w-3.5 h-3.5 text-white/80" />
-              <span className="text-xs font-semibold text-white">
-                {selectedSubHub ? selectedSubHub.name : selectedSuperHub?.name}
-              </span>
+            <div className="flex justify-center">
+              <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5 w-fit" style={{ backgroundColor: BRAND_ORANGE }}>
+                <MapPin className="w-3.5 h-3.5 text-white" />
+                <span className="text-xs font-medium text-white">
+                  {selectedSubHub ? selectedSubHub.name : selectedSuperHub?.name}
+                </span>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Search Box */}
+        {/* Search Box — pill format, white bg */}
         <div className="px-5 pt-4 pb-2 shrink-0 relative" ref={dropdownRef}>
           <div className="relative">
             {isSearching ? (
-              <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin pointer-events-none" />
+              <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin pointer-events-none" />
             ) : (
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             )}
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={e => { setSearchQuery(e.target.value); setSearchStatus("idle"); setSearchMessage(""); }}
-              onFocus={() => searchQuery.trim().length >= 2 && setShowDropdown(true)}
-              placeholder="Search area, locality, landmark, pincode..."
-              className="w-full h-12 pl-10 pr-10 rounded-2xl border-2 border-border/60 focus:border-primary/60 bg-slate-50 focus:bg-white text-sm font-medium placeholder:text-muted-foreground/60 outline-none transition-all"
+              onFocus={() => { setSearchFocused(true); searchQuery.trim().length >= 2 && setShowDropdown(true); }}
+              onBlur={() => setSearchFocused(false)}
+              placeholder={searchFocused ? "" : typewriterPlaceholder}
+              className="w-full h-12 pl-10 pr-10 rounded-full border-2 bg-white text-sm font-normal text-slate-800 placeholder:text-slate-400 outline-none transition-all duration-200"
+              style={{
+                borderColor: searchFocused ? BRAND_BLUE : "#e2e8f0",
+                boxShadow: searchFocused ? `0 0 0 3px ${BRAND_BLUE}18` : "none",
+              }}
               data-testid="input-location-search"
             />
             {searchQuery && (
               <button
                 onClick={() => { setSearchQuery(""); setSearchResults([]); setSearchStatus("idle"); setSearchMessage(""); setShowDropdown(false); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted-foreground/20 flex items-center justify-center hover:bg-muted-foreground/30 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300 transition-colors"
               >
-                <X className="w-3 h-3 text-muted-foreground" />
+                <X className="w-3 h-3 text-slate-500" />
               </button>
             )}
           </div>
@@ -325,24 +383,24 @@ export function LocationPicker() {
               <button
                 onClick={() => { setShowDropdown(false); setSearchQuery(""); handleDetectLocation(); }}
                 disabled={geoStatus === "detecting"}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-primary/5 transition-colors border-b border-border/30"
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-orange-50 transition-colors border-b border-border/30"
               >
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Navigation className="w-4 h-4 text-primary" />
+                <div className="w-9 h-9 rounded-full bg-white border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                  <img src={googleMapsIcon} alt="Maps" className="w-7 h-7 object-contain" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-primary">Use current location</p>
-                  <p className="text-xs text-muted-foreground">Detect your area automatically</p>
+                  <p className="text-sm font-semibold text-slate-800">Use current location</p>
+                  <p className="text-xs text-slate-400 font-normal">Detect your area automatically</p>
                 </div>
               </button>
 
               {isSearching ? (
-                <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 px-4 py-3 text-sm text-slate-400">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   <span>Finding locations...</span>
                 </div>
               ) : searchResults.length === 0 && searchQuery.trim().length >= 2 ? (
-                <div className="px-4 py-3 text-sm text-muted-foreground">No results found. Try a different term.</div>
+                <div className="px-4 py-3 text-sm text-slate-400 font-normal">No results found. Try a different term.</div>
               ) : (
                 <div className="max-h-[280px] overflow-y-auto">
                   {searchResults.map((feature, i) => {
@@ -353,16 +411,16 @@ export function LocationPicker() {
                       <button
                         key={`${feature.properties.osm_id ?? i}`}
                         onClick={() => handleSearchResultSelect(feature)}
-                        className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-muted/40 transition-colors border-b border-border/10 last:border-0"
+                        className="w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-50 transition-colors border-b border-border/10 last:border-0"
                       >
-                        <div className="w-9 h-9 rounded-full bg-muted/60 flex items-center justify-center shrink-0 mt-0.5">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                          <MapPin className="w-4 h-4 text-slate-400" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-foreground truncate">{title}</p>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
+                          <p className="text-sm font-semibold text-slate-800 truncate">{title}</p>
+                          <p className="text-xs text-slate-400 font-normal truncate mt-0.5">{subtitle}</p>
                           {postcode && (
-                            <p className="text-[11px] text-primary/70 font-medium mt-0.5">Pincode: {postcode}</p>
+                            <p className="text-[11px] font-medium mt-0.5" style={{ color: BRAND_BLUE }}>Pincode: {postcode}</p>
                           )}
                         </div>
                       </button>
@@ -376,45 +434,45 @@ export function LocationPicker() {
 
         {/* Search feedback banners */}
         {searchStatus === "serviceable" && (
-          <div className="mx-5 mb-2 shrink-0 flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+          <div className="mx-5 mb-2 shrink-0 flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm font-normal">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{searchMessage}</span>
           </div>
         )}
         {searchStatus === "unserviceable" && (
-          <div className="mx-5 mb-2 shrink-0 flex items-center gap-2 p-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-sm">
+          <div className="mx-5 mb-2 shrink-0 flex items-center gap-2 p-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-sm font-normal">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{searchMessage}</span>
           </div>
         )}
 
-        {/* Use current location — persistent button */}
+        {/* Use current location — persistent button, white bg */}
         <div className="px-5 pb-2 shrink-0">
           <button
             onClick={handleDetectLocation}
             disabled={geoStatus === "detecting" || geoStatus === "serviceable"}
             data-testid="button-detect-location"
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
           >
-            <div className="w-10 h-10 rounded-full bg-[#364F9F] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
               {geoStatus === "detecting" ? (
-                <Loader2 className="w-5 h-5 text-white animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" style={{ color: BRAND_BLUE }} />
               ) : (
-                <Navigation className="w-5 h-5 text-white" />
+                <img src={googleMapsIcon} alt="Maps" className="w-8 h-8 object-contain" />
               )}
             </div>
             <div className="text-left">
-              <p className="text-sm font-bold text-[#364F9F] leading-tight">
+              <p className="text-sm font-medium text-slate-800 leading-tight">
                 {geoStatus === "detecting" ? "Detecting location..." : "Use current location"}
               </p>
-              <p className="text-xs text-muted-foreground">Auto-detect & check serviceability</p>
+              <p className="text-xs text-slate-400 font-normal">Auto-detect & check serviceability</p>
             </div>
           </button>
         </div>
 
         {/* Geo Status Banner */}
         {geoCfg && (
-          <div className={`mx-5 mb-2 shrink-0 flex items-center gap-2 p-3 rounded-xl border text-sm ${geoCfg.bg} ${geoCfg.text}`}>
+          <div className={`mx-5 mb-2 shrink-0 flex items-center gap-2 p-3 rounded-xl border text-sm font-normal ${geoCfg.bg} ${geoCfg.text}`}>
             {geoCfg.icon}
             <span>{geoMessage}</span>
           </div>
@@ -422,9 +480,9 @@ export function LocationPicker() {
 
         {/* Divider */}
         <div className="flex items-center gap-3 px-5 mb-3 shrink-0">
-          <div className="flex-1 h-px bg-border/40" />
-          <span className="text-xs text-muted-foreground font-medium tracking-wide">or select manually</span>
-          <div className="flex-1 h-px bg-border/40" />
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400 font-normal tracking-wide">or select manually</span>
+          <div className="flex-1 h-px bg-slate-200" />
         </div>
 
         {/* Scrollable hub list */}
@@ -432,10 +490,10 @@ export function LocationPicker() {
           {step === "super" ? (
             loadingSuper ? (
               <div className="space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-muted/50 animate-pulse" />)}
+                {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-2xl bg-slate-100 animate-pulse" />)}
               </div>
             ) : superHubs.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8 text-sm">No cities available</p>
+              <p className="text-center text-slate-400 py-8 text-sm font-normal">No cities available</p>
             ) : (
               <div className="space-y-3">
                 {superHubs.map(hub => {
@@ -444,26 +502,26 @@ export function LocationPicker() {
                     <button
                       key={hub.id}
                       onClick={() => handleSuperSelect(hub)}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left bg-white ${
                         isSelected
-                          ? "border-[#364F9F]/50 bg-[#364F9F]/5 shadow-sm"
-                          : "border-border/40 hover:border-[#364F9F]/30 hover:bg-slate-50"
+                          ? "border-[#364F9F]/40 shadow-sm"
+                          : "border-slate-200 hover:border-[#364F9F]/30 hover:bg-slate-50"
                       }`}
                       data-testid={`button-super-hub-${hub.id}`}
                     >
                       {hub.imageUrl ? (
                         <img src={hub.imageUrl} alt={hub.name} className="w-16 h-16 rounded-xl object-cover shrink-0 shadow-sm" />
                       ) : (
-                        <div className="w-16 h-16 rounded-xl bg-[#364F9F]/10 flex items-center justify-center shrink-0">
-                          <MapPin className="w-7 h-7 text-[#364F9F]" />
+                        <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                          <MapPin className="w-7 h-7 text-slate-400" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-foreground text-base">{hub.name}</p>
-                        {hub.location && <p className="text-sm text-muted-foreground truncate mt-0.5">{hub.location}</p>}
+                        <p className="font-semibold text-slate-800 text-base">{hub.name}</p>
+                        {hub.location && <p className="text-sm text-slate-400 font-normal truncate mt-0.5">{hub.location}</p>}
                       </div>
                       {isSelected && (
-                        <div className="w-7 h-7 rounded-full bg-[#364F9F] flex items-center justify-center shrink-0">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: BRAND_BLUE }}>
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
@@ -475,10 +533,10 @@ export function LocationPicker() {
           ) : (
             loadingSub ? (
               <div className="space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-2xl bg-muted/50 animate-pulse" />)}
+                {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-2xl bg-slate-100 animate-pulse" />)}
               </div>
             ) : subHubs.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8 text-sm">No areas available yet</p>
+              <p className="text-center text-slate-400 py-8 text-sm font-normal">No areas available yet</p>
             ) : (
               <div className="space-y-2.5">
                 {subHubs.map(sub => {
@@ -487,31 +545,31 @@ export function LocationPicker() {
                     <button
                       key={sub.id}
                       onClick={() => handleSubSelect(sub)}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left bg-white ${
                         isSelected
-                          ? "border-[#364F9F]/50 bg-[#364F9F]/5 shadow-sm"
-                          : "border-border/40 hover:border-[#364F9F]/30 hover:bg-slate-50"
+                          ? "border-[#364F9F]/40 shadow-sm"
+                          : "border-slate-200 hover:border-[#364F9F]/30 hover:bg-slate-50"
                       }`}
                       data-testid={`button-sub-hub-${sub.id}`}
                     >
                       {sub.imageUrl ? (
                         <img src={sub.imageUrl} alt={sub.name} className="w-14 h-14 rounded-xl object-cover shrink-0 shadow-sm" />
                       ) : (
-                        <div className="w-14 h-14 rounded-xl bg-[#364F9F]/10 flex items-center justify-center shrink-0">
-                          <MapPin className="w-6 h-6 text-[#364F9F]" />
+                        <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                          <MapPin className="w-6 h-6 text-slate-400" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-foreground">{sub.name}</p>
-                        {sub.location && <p className="text-sm text-muted-foreground truncate mt-0.5">{sub.location}</p>}
+                        <p className="font-semibold text-slate-800">{sub.name}</p>
+                        {sub.location && <p className="text-sm text-slate-400 font-normal truncate mt-0.5">{sub.location}</p>}
                         {sub.pincodes?.length > 0 && (
-                          <p className="text-xs text-[#364F9F]/60 font-medium mt-0.5">
+                          <p className="text-xs font-medium mt-0.5" style={{ color: `${BRAND_BLUE}99` }}>
                             Pincodes: {sub.pincodes.slice(0, 4).join(", ")}{sub.pincodes.length > 4 ? "..." : ""}
                           </p>
                         )}
                       </div>
                       {isSelected && (
-                        <div className="w-7 h-7 rounded-full bg-[#364F9F] flex items-center justify-center shrink-0">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: BRAND_BLUE }}>
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
