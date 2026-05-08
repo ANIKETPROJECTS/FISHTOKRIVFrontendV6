@@ -1118,7 +1118,7 @@ export async function registerRoutes(
         campaignName: "Fishtokriotp",
         destination,
         userName,
-        templateParams: ["user"],
+        templateParams: ["$FirstName"],
         source: "fishtokri-app",
         media: {},
         buttons: [
