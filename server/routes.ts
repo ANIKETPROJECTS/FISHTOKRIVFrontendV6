@@ -23,6 +23,40 @@ declare module "express-session" {
 const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 const OTP_TTL_MS = 5 * 60 * 1000;
 
+// ── AiSensy WhatsApp helper ───────────────────────────────────────────────
+const AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
+const AISENSY_USERNAME = process.env.AISENSY_USERNAME || "ATHA FOODS PRIVATE LIMITED";
+
+async function sendWhatsApp(campaignName: string, phone: string, templateParams: string[]) {
+  const apiKey = process.env.AISENSY_API_KEY;
+  if (!apiKey) { console.warn("[WhatsApp] AISENSY_API_KEY not set — skipping"); return; }
+  const destination = `91${phone}`;
+  try {
+    const res = await fetch(AISENSY_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        apiKey,
+        campaignName,
+        destination,
+        userName: AISENSY_USERNAME,
+        templateParams,
+        source: "fishtokri-app",
+        media: {},
+        buttons: [],
+        carouselCards: [],
+        location: {},
+        paramsFallbackValue: { FirstName: templateParams[0] ?? "" },
+      }),
+    });
+    const text = await res.text();
+    if (!res.ok) console.error(`[WhatsApp] ${campaignName} failed ${res.status}:`, text);
+    else console.log(`[WhatsApp] ${campaignName} → ${destination}`);
+  } catch (err) {
+    console.error(`[WhatsApp] ${campaignName} error:`, err);
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -447,6 +481,25 @@ export async function registerRoutes(
         total,
         placedAt: order.createdAt,
       });
+
+      // Send order confirmation WhatsApp message (fire-and-forget)
+      try {
+        const itemsList = (order.items as any[])
+          .map((item: any) => `• ${item.name} x${item.quantity ?? 1} — ₹${(item.price ?? 0) * (item.quantity ?? 1)}`)
+          .join("\n");
+        const paymentLabel = (order as any).paymentMethod === "upi" ? "UPI (Paid)" : "Cash on Delivery";
+        const shortId = order.id.toString().slice(-6).toUpperCase();
+        sendWhatsApp("fishtokri_order_confirmed", order.phone, [
+          order.customerName || "Customer",
+          `FT-${shortId}`,
+          order.address || order.deliveryArea || "Your address",
+          itemsList,
+          total.toString(),
+          paymentLabel,
+        ]).catch(() => {});
+      } catch (waErr) {
+        console.error("[WhatsApp] Order confirmation error:", waErr);
+      }
 
       // Increment coupon usage after successful order
       if (input.couponCode && input.hubDbName) {
@@ -1171,6 +1224,11 @@ export async function registerRoutes(
     otpStore.delete(normalised);
     const customer = await storage.upsertCustomer(normalised, { phone: normalised });
     req.session.customerPhone = normalised;
+
+    // Send welcome WhatsApp message (fire-and-forget)
+    const displayName = (customer as any)?.name || "there";
+    sendWhatsApp("fishtokri_welcome", normalised, [displayName]).catch(() => {});
+
     res.json(customer);
   });
 

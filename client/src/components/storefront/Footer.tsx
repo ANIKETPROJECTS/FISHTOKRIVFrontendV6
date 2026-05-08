@@ -127,17 +127,17 @@ export function Footer() {
         </div>
 
         {/* Divider + bottom bar */}
-        <div className="border-t border-white/20 pt-5 flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1 sm:gap-0">
-          <p className="text-white/70 text-xs text-center sm:text-left order-2 sm:order-1">
+        <div className="border-t border-white/20 pt-5 flex flex-col sm:grid sm:grid-cols-3 sm:items-center gap-1.5 sm:gap-0">
+          <p className="text-white text-sm text-center sm:text-left order-2 sm:order-1">
             © {new Date().getFullYear()} FishTokri. All rights reserved.
           </p>
-          <p className="text-white text-xs font-medium text-center order-1 sm:order-2">
+          <p className="text-white text-sm font-normal text-center order-1 sm:order-2">
             Designed and Developed by{" "}
             <a
               href="https://www.airavatatechnologies.com/"
               target="_blank"
               rel="noreferrer"
-              className="text-white underline underline-offset-2 hover:opacity-75 transition-opacity font-semibold"
+              className="text-white underline underline-offset-2 hover:opacity-75 transition-opacity font-medium"
             >
               AIRAVATA TECHNOLOGIES
             </a>

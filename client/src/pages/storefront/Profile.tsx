@@ -461,7 +461,7 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Payment Status</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${(order as any).paymentMethod === "upi" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${(order as any).paymentMethod === "upi" ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
                   {(order as any).paymentMethod === "upi" ? "Paid" : "Unpaid"}
                 </span>
               </div>
