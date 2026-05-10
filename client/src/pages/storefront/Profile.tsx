@@ -262,6 +262,119 @@ function TrackOrderModal({ order, onClose }: { order: OrderRequest; onClose: () 
   );
 }
 
+function downloadInvoicePDF(order: OrderRequest, items: OrderItem[], subtotal: number, deliveryFee: number, discount: number, total: number, date: string) {
+  const orderId = formatOrderId(String(order.id));
+  const paymentMethod = (order as any).paymentMethod === "upi" ? "UPI" : "Cash on Delivery";
+  const isPaid = (order as any).paymentMethod === "upi";
+  const couponCode = (order as any).coupon?.code ?? "";
+
+  const itemRows = items.map(item => `
+    <tr>
+      <td style="padding:8px 4px;border-bottom:1px solid #f1f5f9;font-size:13px;">${item.name}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:center;">${item.quantity}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:right;">₹${item.price.toLocaleString()}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #f1f5f9;font-size:13px;text-align:right;font-weight:600;">₹${(item.price * item.quantity).toLocaleString()}</td>
+    </tr>`).join("");
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>Invoice ${orderId}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:#1e293b; background:#fff; padding:32px; }
+    .header { display:flex; align-items:center; justify-content:space-between; padding-bottom:20px; border-bottom:2px solid #364F9F; margin-bottom:20px; }
+    .brand { display:flex; align-items:center; gap:10px; }
+    .brand-name { font-size:22px; font-weight:800; color:#364F9F; }
+    .brand-sub { font-size:11px; color:#64748b; margin-top:2px; }
+    .invoice-meta { text-align:right; }
+    .invoice-meta .label { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#64748b; }
+    .invoice-meta .id { font-size:14px; font-weight:700; color:#1e293b; }
+    .invoice-meta .date { font-size:11px; color:#64748b; margin-top:2px; }
+    .bill-to { background:#f8fafc; border-radius:10px; padding:14px 16px; margin-bottom:20px; }
+    .bill-to .section-label { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#94a3b8; margin-bottom:6px; }
+    .bill-to .name { font-size:15px; font-weight:700; }
+    .bill-to .details { font-size:12px; color:#64748b; margin-top:2px; line-height:1.5; }
+    table { width:100%; border-collapse:collapse; margin-bottom:16px; }
+    thead tr th { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#94a3b8; padding:6px 4px; border-bottom:2px solid #e2e8f0; text-align:left; }
+    thead tr th:not(:first-child) { text-align:center; }
+    thead tr th:last-child { text-align:right; }
+    thead tr th:nth-child(3) { text-align:right; }
+    .totals { margin-bottom:16px; }
+    .totals .row { display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:#64748b; }
+    .totals .row.total { font-size:15px; font-weight:800; color:#1e293b; border-top:2px solid #e2e8f0; padding-top:10px; margin-top:6px; }
+    .totals .row.discount { color:#16a34a; }
+    .totals .row.free { color:#16a34a; }
+    .payment-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid #f1f5f9; font-size:13px; }
+    .badge { font-size:11px; font-weight:700; padding:2px 10px; border-radius:99px; }
+    .badge.paid { background:#22c55e; color:#fff; }
+    .badge.unpaid { background:#ef4444; color:#fff; }
+    .notes { background:#364F9F; border-radius:8px; padding:10px 14px; margin-bottom:14px; }
+    .notes .notes-label { font-size:10px; font-weight:700; color:rgba(255,255,255,0.7); margin-bottom:3px; }
+    .notes .notes-text { font-size:12px; color:#fff; }
+    .footer { text-align:center; font-size:11px; color:#94a3b8; padding-top:16px; border-top:1px solid #f1f5f9; }
+    @media print { body { padding:16px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <div>
+        <div class="brand-name">🐟 FishTokri</div>
+        <div class="brand-sub">Fresh Seafood & Meat · Mumbai</div>
+      </div>
+    </div>
+    <div class="invoice-meta">
+      <div class="label">Tax Invoice</div>
+      <div class="id">#${orderId}</div>
+      <div class="date">${date}</div>
+    </div>
+  </div>
+
+  <div class="bill-to">
+    <div class="section-label">Bill To</div>
+    <div class="name">${order.customerName}</div>
+    <div class="details">${order.phone}<br/>${order.address}, ${order.deliveryArea}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th style="text-align:center;">Qty</th>
+        <th style="text-align:right;">Rate</th>
+        <th style="text-align:right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="row"><span>Subtotal</span><span>₹${subtotal.toLocaleString()}</span></div>
+    <div class="row ${deliveryFee === 0 ? 'free' : ''}"><span>Delivery Fee</span><span>${deliveryFee === 0 ? 'FREE' : '₹' + deliveryFee}</span></div>
+    ${discount > 0 ? `<div class="row discount"><span>Coupon Discount${couponCode ? ` (${couponCode})` : ''}</span><span>-₹${discount.toLocaleString()}</span></div>` : ''}
+    <div class="row"><span>GST (5%)</span><span>Included</span></div>
+    <div class="row total"><span>Total</span><span>₹${total.toLocaleString()}</span></div>
+  </div>
+
+  <div class="payment-row"><span style="color:#64748b;">Payment Method</span><span style="font-weight:600;">${paymentMethod}</span></div>
+  <div class="payment-row"><span style="color:#64748b;">Payment Status</span><span class="badge ${isPaid ? 'paid' : 'unpaid'}">${isPaid ? 'Paid' : 'Unpaid'}</span></div>
+
+  ${order.notes ? `<div class="notes" style="margin-top:12px;"><div class="notes-label">Order Notes</div><div class="notes-text">${order.notes}</div></div>` : ''}
+
+  <div class="footer">Thank you for shopping with FishTokri!</div>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank", "width=700,height=900");
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 500);
+}
+
 function OrderCard({ order, productImageMap }: { order: OrderRequest; productImageMap: Record<string, string> }) {
   const [expanded, setExpanded] = useState(false);
   const items: OrderItem[] = Array.isArray(order.items) ? order.items as OrderItem[] : [];
@@ -474,6 +587,15 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
               </div>
             )}
             <p className="text-[11px] text-center text-muted-foreground pt-1">Thank you for shopping with FishTokri!</p>
+
+            <button
+              onClick={() => downloadInvoicePDF(order, items, subtotal, deliveryFee, discount, total, date)}
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[#364F9F] text-[#364F9F] text-sm font-semibold hover:bg-[#364F9F] hover:text-white transition-colors"
+              data-testid={`button-download-invoice-${order.id}`}
+            >
+              <Receipt className="w-4 h-4" />
+              Download Invoice PDF
+            </button>
           </div>
         </div>
       )}
