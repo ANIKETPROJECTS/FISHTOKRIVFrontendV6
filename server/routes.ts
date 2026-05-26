@@ -5,7 +5,7 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import passport from "passport";
 import { setupAuth } from "./auth";
-import { connectOrdersDb, generateOrderId } from "./ordersDb";
+import { connectOrdersDb, generateOrderId, getOrderModel } from "./ordersDb";
 import { setImage, getImage, deleteImage } from "./imageStore";
 import { insertCarouselSlideSchema, insertCategorySchema, insertSectionSchema, insertComboSchema, insertCustomerAddressSchema, updateCustomerSchema, insertInventoryBatchSchema } from "@shared/schema";
 import { SuperHubModel, SubHubModel } from "./adminDb";
@@ -531,34 +531,49 @@ export async function registerRoutes(
         } catch { /* non-fatal */ }
       }
 
-      // Build orderInput explicitly — only include fields that match the admin POS schema.
-      // Do NOT spread ...input to avoid leaking frontend-only fields (paymentMethod,
-      // instantDeliveryCharge, couponCode, discountAmount, hubDbName).
+      // Build deliveryAddressDetail with _id as a plain string at the end
+      // (matching admin POS format — not a Mongoose ObjectId / $oid object).
+      const rawAddr = input.deliveryAddressDetail;
+      const addrDetail = rawAddr
+        ? {
+            name: rawAddr.name ?? null,
+            phone: rawAddr.phone ?? null,
+            building: rawAddr.building ?? null,
+            street: rawAddr.street ?? null,
+            area: rawAddr.area ?? null,
+            pincode: rawAddr.pincode ?? null,
+            type: rawAddr.type ?? "house",
+            label: rawAddr.label ?? "Home",
+            instructions: rawAddr.instructions ?? "",
+            _id: rawAddr._id ? String(rawAddr._id) : null,
+          }
+        : null;
+
+      // Build orderInput in the exact field order used by the admin POS schema.
+      // orderId is intentionally omitted here — it is appended LAST via
+      // findByIdAndUpdate after the document is saved (matching admin behaviour).
       const orderInput: any = {
-        orderId: generatedOrderId,
         customerId: input.customerId ?? null,
         customerName: input.customerName,
         phone: input.phone,
         email: resolvedEmail,
-        deliveryArea: input.deliveryArea,
-        address: input.address,
-        deliveryAddressDetail: input.deliveryAddressDetail ?? null,
-        pickupLocation: "",
         items: cleanedItems,
         subtotal,
         discount,
         slotCharge,
         total,
-        status: "pending",
-        notes: input.notes ?? "",
-        source: "online",
         deliveryType: input.deliveryType ?? "delivery",
-        scheduleType: input.scheduleType ?? "slot",
-        timeslotId: input.timeslotId ?? null,
-        timeslotLabel: input.timeslotLabel ?? null,
-        timeslotStart: input.timeslotStart ?? null,
-        timeslotEnd: input.timeslotEnd ?? null,
-        deliveryDate,
+        address: input.address,
+        deliveryArea: input.deliveryArea,
+        deliveryAddressDetail: addrDetail,
+        pickupLocation: "",
+        notes: input.notes ?? "",
+        status: "pending",
+        source: "online",
+        subHubId: resolvedSubHubId ?? null,
+        subHubName: resolvedSubHubName ?? null,
+        superHubId: resolvedSuperHubId ?? null,
+        superHubName: resolvedSuperHubName ?? null,
         couponIds,
         couponCodes,
         coupons,
@@ -567,21 +582,26 @@ export async function registerRoutes(
         paidAmount: 0,
         dueAmount: total,
         paymentMode,
-        superHubId: resolvedSuperHubId ?? null,
-        superHubName: resolvedSuperHubName ?? null,
-        subHubId: resolvedSubHubId ?? null,
-        subHubName: resolvedSubHubName ?? null,
+        scheduleType: input.scheduleType ?? "slot",
+        deliveryDate,
+        timeslotId: input.timeslotId ?? null,
+        timeslotLabel: input.timeslotLabel ?? null,
+        timeslotStart: input.timeslotStart ?? null,
+        timeslotEnd: input.timeslotEnd ?? null,
         inventoryDeducted: !!input.hubDbName,
       };
 
       const order = await storage.createOrderRequest(orderInput);
+
+      // Append orderId as the last field on the document (matching admin POS behaviour).
+      await getOrderModel().findByIdAndUpdate(order.id, { $set: { orderId: generatedOrderId } });
 
       const orderItemsTotal = (order.items as any[]).reduce((sum: number, item: any) => {
         return sum + ((item.price ?? 0) * (item.quantity ?? 1));
       }, 0);
 
       await storage.pushOrderToCustomer(order.phone, {
-        orderId: order.orderId ?? order.id,
+        orderId: generatedOrderId,
         customerName: order.customerName,
         phone: order.phone,
         deliveryArea: order.deliveryArea,
@@ -601,7 +621,7 @@ export async function registerRoutes(
         const paymentLabel = (order as any).paymentMethod === "upi" ? "UPI (Paid)" : "Cash on Delivery";
         sendWhatsApp("fishtokri_order_confirmed", order.phone, [
           order.customerName || "Customer",
-          order.orderId ?? order.id,
+          generatedOrderId,
           order.address || order.deliveryArea || "Your address",
           itemsList,
           total.toString(),

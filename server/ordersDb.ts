@@ -17,7 +17,6 @@ const orderCouponSchema = new mongoose.Schema(
 
 const deliveryAddressDetailSchema = new mongoose.Schema(
   {
-    _id: { type: mongoose.Schema.Types.ObjectId, default: null },
     name: { type: String, default: null },
     phone: { type: String, default: null },
     building: { type: String, default: null },
@@ -27,51 +26,55 @@ const deliveryAddressDetailSchema = new mongoose.Schema(
     type: { type: String, default: "house" },
     label: { type: String, default: "Home" },
     instructions: { type: String, default: "" },
+    _id: { type: String, default: null },
   },
   { _id: false }
 );
 
-const orderSchema = new mongoose.Schema({
-  orderId: { type: String, default: null },
-  customerId: { type: String, default: null },
-  customerName: { type: String, required: true },
-  phone: { type: String, required: true },
-  email: { type: String, default: null },
-  deliveryArea: { type: String, required: true },
-  address: { type: String, required: true },
-  deliveryAddressDetail: { type: deliveryAddressDetailSchema, default: null },
-  pickupLocation: { type: String, default: "" },
-  items: { type: mongoose.Schema.Types.Mixed, required: true },
-  subtotal: { type: Number, default: 0 },
-  discount: { type: Number, default: 0 },
-  slotCharge: { type: Number, default: 0 },
-  total: { type: Number, default: 0 },
-  status: { type: String, default: "pending" },
-  notes: { type: String, default: "" },
-  source: { type: String, default: "online" },
-  deliveryType: { type: String, default: "delivery" },
-  scheduleType: { type: String, default: null },
-  timeslotId: { type: String, default: null },
-  timeslotLabel: { type: String, default: null },
-  timeslotStart: { type: String, default: null },
-  timeslotEnd: { type: String, default: null },
-  deliveryDate: { type: String, default: null },
-  couponIds: { type: [String], default: [] },
-  couponCodes: { type: [String], default: [] },
-  coupons: { type: mongoose.Schema.Types.Mixed, default: [] },
-  paymentMode: { type: String, default: null },
-  paymentStatus: { type: String, default: "unpaid" },
-  payments: { type: mongoose.Schema.Types.Mixed, default: [] },
-  paidAmount: { type: Number, default: 0 },
-  dueAmount: { type: Number, default: 0 },
-  superHubId: { type: String, default: null },
-  superHubName: { type: String, default: null },
-  subHubId: { type: String, default: null },
-  subHubName: { type: String, default: null },
-  inventoryDeducted: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-});
+const orderSchema = new mongoose.Schema(
+  {
+    customerId: { type: String, default: null },
+    customerName: { type: String, required: true },
+    phone: { type: String, required: true },
+    email: { type: String, default: null },
+    items: { type: mongoose.Schema.Types.Mixed, required: true },
+    subtotal: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 },
+    slotCharge: { type: Number, default: 0 },
+    total: { type: Number, default: 0 },
+    deliveryType: { type: String, default: "delivery" },
+    address: { type: String, required: true },
+    deliveryArea: { type: String, required: true },
+    deliveryAddressDetail: { type: deliveryAddressDetailSchema, default: null },
+    pickupLocation: { type: String, default: "" },
+    notes: { type: String, default: "" },
+    status: { type: String, default: "pending" },
+    source: { type: String, default: "online" },
+    subHubId: { type: String, default: null },
+    subHubName: { type: String, default: null },
+    superHubId: { type: String, default: null },
+    superHubName: { type: String, default: null },
+    couponIds: { type: [String], default: [] },
+    couponCodes: { type: [String], default: [] },
+    coupons: { type: mongoose.Schema.Types.Mixed, default: [] },
+    paymentStatus: { type: String, default: "unpaid" },
+    payments: { type: mongoose.Schema.Types.Mixed, default: [] },
+    paidAmount: { type: Number, default: 0 },
+    dueAmount: { type: Number, default: 0 },
+    paymentMode: { type: String, default: null },
+    scheduleType: { type: String, default: null },
+    deliveryDate: { type: String, default: null },
+    timeslotId: { type: String, default: null },
+    timeslotLabel: { type: String, default: null },
+    timeslotStart: { type: String, default: null },
+    timeslotEnd: { type: String, default: null },
+    inventoryDeducted: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    orderId: { type: String, default: null },
+  },
+  { versionKey: false }
+);
 
 const orderIdCounterSchema = new mongoose.Schema({
   date: { type: String, required: true, unique: true },
@@ -111,8 +114,11 @@ export function getOrderIdCounterModel() {
  * Format: #FTS{YYYYMMDD}{N} — e.g. #FTS202605271
  */
 export async function generateOrderId(): Promise<string> {
+  // Always use IST (UTC+5:30) for the date key so orders placed after
+  // midnight IST get the correct day's sequence number.
   const now = new Date();
-  const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const istDate = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  const date = istDate.toISOString().slice(0, 10).replace(/-/g, ""); // "YYYYMMDD"
   const Counter = getOrderIdCounterModel();
   const counter = await Counter.findOneAndUpdate(
     { date },
