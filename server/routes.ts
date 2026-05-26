@@ -507,13 +507,13 @@ export async function registerRoutes(
       const deliveryDate = input.deliveryDate ??
         `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, "0")}-${String(now2.getDate()).padStart(2, "0")}`;
 
-      // Strip imageUrl from items — match the admin POS format (productId, name, price, quantity, unit only)
-      const cleanedItems = (input.items as any[]).map(({ productId, name, price, quantity, unit }) => ({
+      const cleanedItems = (input.items as any[]).map(({ productId, name, price, quantity, unit, imageUrl }) => ({
         productId,
         name,
         price,
         quantity,
         unit: unit ?? null,
+        imageUrl: imageUrl ?? null,
       }));
 
       // Fetch customer email from DB if not provided in payload
@@ -1400,7 +1400,41 @@ export async function registerRoutes(
     const phone = req.session.customerPhone!;
     try {
       const orders = await storage.getOrdersByPhone(phone);
-      res.json(orders);
+
+      // Enrich order items that are missing imageUrl by looking up the product
+      // in the hub's products collection using subHubName + productId.
+      const enriched = await Promise.all(orders.map(async (order) => {
+        const items: any[] = Array.isArray(order.items) ? order.items : [];
+        const dbName = order.subHubName;
+
+        const missingIds = items
+          .filter(i => !i.imageUrl && i.productId)
+          .map(i => String(i.productId));
+
+        let imageMap: Record<string, string> = {};
+        if (missingIds.length > 0 && dbName) {
+          try {
+            const { getHubModels } = await import("./hubConnections");
+            const { Product } = await getHubModels(dbName);
+            const products = await (Product as any).find(
+              { _id: { $in: missingIds } },
+              { imageUrl: 1 }
+            ).lean() as any[];
+            for (const p of products) {
+              if (p.imageUrl) imageMap[String(p._id)] = p.imageUrl;
+            }
+          } catch { /* ignore hub lookup failures */ }
+        }
+
+        const enrichedItems = items.map(item => ({
+          ...item,
+          imageUrl: item.imageUrl || imageMap[String(item.productId)] || null,
+        }));
+
+        return { ...order, items: enrichedItems };
+      }));
+
+      res.json(enriched);
     } catch {
       res.json([]);
     }
