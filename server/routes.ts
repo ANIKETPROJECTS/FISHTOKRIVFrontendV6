@@ -389,7 +389,7 @@ export async function registerRoutes(
     try {
       const input = api.orders.create.input.parse(req.body);
 
-      // Generate daily-sequential FTW order ID: #FTWYYYYMMDD01, #FTWYYYYMMDD02, …
+      // Generate daily-sequential FTS order ID: #FTSYYYYMMDD01, #FTSYYYYMMDD02, …
       let generatedOrderId: string | null = null;
       try {
         const OrderModel = getOrderModel();
@@ -402,9 +402,9 @@ export async function registerRoutes(
         const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
         const todayCount = await OrderModel.countDocuments({
           createdAt: { $gte: startOfDay, $lt: endOfDay },
-          orderId: { $regex: /^#FTW/ },
+          orderId: { $regex: /^#FTS/ },
         });
-        generatedOrderId = `#FTW${dateStr}${String(todayCount + 1).padStart(2, "0")}`;
+        generatedOrderId = `#FTS${dateStr}${String(todayCount + 1).padStart(2, "0")}`;
       } catch { /* non-fatal — will fall back to MongoDB id */ }
 
       // FIFO inventory deduction if hubDbName is provided
@@ -525,10 +525,20 @@ export async function registerRoutes(
       const deliveryDate = input.deliveryDate ??
         `${now2.getFullYear()}-${String(now2.getMonth() + 1).padStart(2, "0")}-${String(now2.getDate()).padStart(2, "0")}`;
 
+      // Strip imageUrl from items — match the admin POS format (productId, name, price, quantity, unit only)
+      const cleanedItems = (input.items as any[]).map(({ productId, name, price, quantity, unit }) => ({
+        productId,
+        name,
+        price,
+        quantity,
+        unit: unit ?? null,
+      }));
+
       const orderInput: any = {
         ...input,
+        items: cleanedItems,
         orderId: generatedOrderId,
-        source: input.source ?? "online",
+        source: "website",
         deliveryType: input.deliveryType ?? "delivery",
         scheduleType: input.scheduleType ?? (input.deliveryType === "instant" ? "instant" : "slot"),
         subtotal,
@@ -544,6 +554,8 @@ export async function registerRoutes(
         couponCodes,
         coupons,
         deliveryDate,
+        pickupLocation: input.pickupLocation ?? "",
+        notes: input.notes ?? "",
         inventoryDeducted: !!input.hubDbName,
         ...(resolvedCoupon && { coupon: resolvedCoupon }),
         ...(resolvedSuperHubId && { superHubId: resolvedSuperHubId }),

@@ -152,6 +152,7 @@ export class MongoStorage implements IStorage {
       ...order,
       status: "pending",
       createdAt: new Date(),
+      updatedAt: new Date(),
     });
     return toOrder(doc);
   }

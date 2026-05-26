@@ -46,7 +46,7 @@ const orderSchema = new mongoose.Schema({
   slotCharge: { type: Number, default: 0 },
   total: { type: Number, default: 0 },
   status: { type: String, default: "pending" },
-  notes: { type: String, default: null },
+  notes: { type: String, default: "" },
   source: { type: String, default: "online" },
   deliveryType: { type: String, default: "delivery" },
   scheduleType: { type: String, default: null },
