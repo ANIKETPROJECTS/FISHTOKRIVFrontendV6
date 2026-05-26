@@ -96,7 +96,7 @@ const categorySchema = new mongoose.Schema({
 });
 
 const comboItemSchema = new mongoose.Schema(
-  { productId: { type: String, required: true }, label: { type: String, required: true } },
+  { productId: { type: String, required: true }, label: { type: String, required: true }, quantity: { type: Number, default: 1 } },
   { _id: false }
 );
 

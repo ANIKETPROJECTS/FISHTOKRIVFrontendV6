@@ -357,6 +357,7 @@ export const updateCustomerSchema = z.object({
 export type ComboItem = {
   productId: string;
   label: string;
+  quantity: number;
 };
 
 export type NutritionItem = {

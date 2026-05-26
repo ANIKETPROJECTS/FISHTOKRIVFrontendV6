@@ -1,0 +1,32 @@
+Here is a clean, detailed prompt based on your requirement:
+
+---
+
+**Inventory-Aware Cart Quantity Validation for Products and Combos**
+
+In the system, each Combo document in MongoDB contains an `includes` array that defines which products are part of the combo and how many units of each product are consumed per combo quantity. For example, a combo may include Product A (quantity: 2) and Product B (quantity: 3), meaning adding 1 unit of the combo consumes 2 units of Product A and 3 units of Product B from the available inventory.
+
+**Implement the following cart validation logic:**
+
+When a user adds any item (individual product or combo) to the cart, the maximum quantity they are allowed to add must be dynamically calculated based on the **remaining available inventory**, after accounting for all items already present in the cart that share the same underlying products.
+
+**Calculation Rules:**
+
+1. **Individual Product Max Quantity:**
+ For a given product, the maximum addable quantity is:
+ `Available Stock − (units already in cart as individual product) − (sum of: each combo quantity in cart × that combo's usage of this product)`
+
+2. **Combo Max Quantity:**
+ For a given combo, the maximum addable quantity is the **minimum** across all products included in the combo:
+ `floor((Available Stock of Product X − units of Product X already reserved in cart) / combo's required quantity of Product X)`
+ This must be computed for every product in the combo, and the smallest result is the allowed max for that combo.
+
+3. **Real-Time Enforcement:**
+ These limits must be recalculated every time the cart changes (item added, removed, or quantity updated), so that all quantity controls always reflect the current cart state accurately.
+
+**Example:**
+- Product A stock: 10, Product B stock: 12
+- Combo includes: A × 2, B × 3
+- If the user adds 4 units of Product A to cart individually, the max allowed combo quantity becomes `floor((10 − 4) / 2) = 3`
+- If the user then adds 2 combos, the max for individual Product A becomes `10 − 4 − (2 × 2) = 2`
+- At all times, the total consumption of any product across individual cart items and combo cart items must never exceed its available stock

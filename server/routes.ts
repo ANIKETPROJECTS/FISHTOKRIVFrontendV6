@@ -389,12 +389,21 @@ export async function registerRoutes(
     try {
       const input = api.orders.create.input.parse(req.body);
 
-      // Generate sequential FTW order ID (web orders)
+      // Generate daily-sequential FTW order ID: #FTWYYYYMMDD1, #FTWYYYYMMDD2, …
       let generatedOrderId: string | null = null;
       try {
         const OrderModel = getOrderModel();
-        const count = await OrderModel.countDocuments();
-        generatedOrderId = `FTW-${String(count + 1).padStart(4, "0")}`;
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const dateStr = `${yyyy}${mm}${dd}`;
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+        const todayCount = await OrderModel.countDocuments({
+          createdAt: { $gte: startOfDay, $lt: endOfDay },
+        });
+        generatedOrderId = `#FTW${dateStr}${todayCount + 1}`;
       } catch { /* non-fatal — will fall back to MongoDB id */ }
 
       // FIFO inventory deduction if hubDbName is provided

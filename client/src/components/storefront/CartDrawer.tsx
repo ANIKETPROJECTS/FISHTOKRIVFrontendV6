@@ -116,7 +116,7 @@ function photonSubtitle(f: PhotonFeature): string {
 }
 
 export function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, items, updateQuantity, updateInstruction, totalPrice, clearCart, appliedCoupon, setAppliedCoupon, discountAmount } = useCart();
+  const { isCartOpen, setIsCartOpen, items, updateQuantity, updateInstruction, totalPrice, clearCart, appliedCoupon, setAppliedCoupon, discountAmount, computeMaxQty } = useCart();
   const { mutate: createOrder, isPending } = useCreateOrder();
   const { customer } = useCustomer();
   const queryClient = useQueryClient();
@@ -221,6 +221,7 @@ export function CartDrawer() {
     enabled: isCartOpen,
   });
 
+  // Convert a time string to a Date (handles both "21:30" 24h and "9:30 PM" 12h formats)
   const parseTimeStr = useCallback((timeStr: string): Date | null => {
     if (!timeStr) return null;
     const parts = timeStr.trim().split(" ");
@@ -231,17 +232,41 @@ export function CartDrawer() {
     if (isNaN(h) || isNaN(m)) return null;
     if (period === "PM" && h !== 12) h += 12;
     if (period === "AM" && h === 12) h = 0;
+    // No AM/PM → treat as 24-hour (no conversion needed)
     const d = new Date();
     d.setHours(h, m, 0, 0);
     return d;
   }, []);
 
+  // Format a 24h time string like "21:30" → "9:30 PM"
+  const format24to12 = useCallback((timeStr: string | null): string => {
+    if (!timeStr) return "";
+    const [hStr, mStr] = timeStr.split(":");
+    let h = parseInt(hStr, 10);
+    const m = parseInt(mStr ?? "0", 10);
+    if (isNaN(h) || isNaN(m)) return timeStr;
+    // Already 12h with AM/PM suffix — return as-is
+    if (timeStr.toLowerCase().includes("am") || timeStr.toLowerCase().includes("pm")) return timeStr;
+    const period = h >= 12 ? "PM" : "AM";
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${h}:${String(m).padStart(2, "0")} ${period}`;
+  }, []);
+
+  // Build a human-readable time range for a slot (e.g. "9:30 PM – 10:00 PM")
+  const getSlotTimeDisplay = useCallback((slot: Timeslot): string | null => {
+    if (slot.isInstant) return null;
+    if (slot.startTime && slot.endTime) {
+      return `${format24to12(slot.startTime)} – ${format24to12(slot.endTime)}`;
+    }
+    return null;
+  }, [format24to12]);
+
   // Extract start time string from a slot — supports both dedicated startTime field
-  // and labels like "09:30 PM – 10:00 PM" (new DB structure) or "09:00 - 10:59" (old)
+  // and labels like "09:30 PM – 10:00 PM" or "21:30 - 22:00"
   const extractSlotStartTime = useCallback((slot: Timeslot): string | null => {
     if (slot.startTime) return slot.startTime;
     if (slot.label) {
-      // Label formats: "09:30 PM – 10:00 PM" or "09:00 - 10:59"
       const match = slot.label.match(/^(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i);
       if (match) return match[1].trim();
     }
@@ -623,7 +648,12 @@ export function CartDrawer() {
                                   : <Minus className="w-3 h-3 text-slate-600" />}
                               </button>
                               <span className="text-sm font-bold w-5 text-center">{item.quantity}</span>
-                              <button className="h-6 w-6 rounded-full hover:bg-white flex items-center justify-center" onClick={() => updateQuantity(item.id, item.quantity + 1)} data-testid={`button-increase-${item.id}`}>
+                              <button
+                                className="h-6 w-6 rounded-full hover:bg-white flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                disabled={item.quantity >= computeMaxQty(item)}
+                                data-testid={`button-increase-${item.id}`}
+                              >
                                 <Plus className="w-3 h-3 text-slate-600" />
                               </button>
                             </div>
@@ -1152,6 +1182,7 @@ export function CartDrawer() {
                           ) : (
                             availableTimeslots.map(slot => {
                               const isSelected = selectedTimeslotId === slot.id;
+                              const timeDisplay = getSlotTimeDisplay(slot);
                               return (
                               <div key={slot.id}>
                                 <button
@@ -1164,9 +1195,14 @@ export function CartDrawer() {
                                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected ? (slot.isInstant ? "border-amber-500" : "border-[#364F9F]") : "border-slate-300"}`}>
                                       {isSelected && <div className={`w-2 h-2 rounded-full ${slot.isInstant ? "bg-amber-500" : "bg-[#364F9F]"}`} />}
                                     </div>
-                                    <span className={`text-sm font-semibold flex-1 min-w-0 truncate ${slot.isInstant ? "text-amber-700" : "text-foreground"}`}>
-                                      {slot.label}
-                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <span className={`text-sm font-semibold block truncate ${slot.isInstant ? "text-amber-700" : "text-foreground"}`}>
+                                        {slot.label}
+                                      </span>
+                                      {timeDisplay && (
+                                        <span className="text-xs text-muted-foreground block">{timeDisplay}</span>
+                                      )}
+                                    </div>
                                     {slot.isInstant && (slot.extraCharge ?? 0) > 0 ? (
                                       <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">+₹{slot.extraCharge}</span>
                                     ) : !slot.isInstant ? (

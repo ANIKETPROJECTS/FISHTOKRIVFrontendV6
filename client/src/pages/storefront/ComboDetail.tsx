@@ -340,7 +340,7 @@ function ComboCard({ combo, productMap }: { combo: Combo; productMap: Record<str
 export default function ComboDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const { addToCart, setIsCartOpen, appliedCoupon, setAppliedCoupon } = useCart();
+  const { addToCart, setIsCartOpen, appliedCoupon, setAppliedCoupon, computeMaxQty, items } = useCart();
   const { customer, openLoginModal } = useCustomer();
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
@@ -450,17 +450,9 @@ export default function ComboDetail() {
     ? sameCategorySimilar.slice(0, 10)
     : products.filter((p) => !p.isArchived && !comboProductIds.has(p.id)).slice(0, 10);
 
-  const handleAddToCart = () => {
-    if (!combo) return;
-    if (!customer) { openLoginModal(); return; }
-    const comboImagesForCart = includedProducts
-      .slice(0, 3)
-      .map(({ product }) => product?.imageUrl || getFallbackImage(product?.category ?? "Fish"));
-    const comboCategoriesForCart = includedProducts
-      .slice(0, 3)
-      .map(({ product }) => product?.category ?? "Fish");
-    for (let i = 0; i < qty; i++) {
-      addToCart({
+  // Build a cart-item representation of this combo (for max-qty calculation)
+  const comboCartItem = combo
+    ? ({
         id: -Math.abs(parseInt(combo.id.slice(-6), 16) || 9999),
         originalId: combo.id,
         name: combo.name,
@@ -474,11 +466,37 @@ export default function ComboDetail() {
         limitedStockNote: null,
         sectionId: null,
         isCombo: true,
+        comboImages: [],
+        comboCategories: [],
+        availableQty: null,
+        quantity: items.find((i) => i.isCombo && i.originalId === combo.id)?.quantity ?? 0,
+        comboIncludes: combo.includes.map((inc) => ({
+          productId: inc.productId,
+          quantity: inc.quantity,
+          availableQty: productMap[inc.productId]?.availableQty ?? null,
+        })),
+      } as any)
+    : null;
+
+  const maxComboQty = comboCartItem ? computeMaxQty(comboCartItem) : 99;
+
+  const handleAddToCart = () => {
+    if (!combo || !comboCartItem) return;
+    if (!customer) { openLoginModal(); return; }
+    const comboImagesForCart = includedProducts
+      .slice(0, 3)
+      .map(({ product }) => product?.imageUrl || getFallbackImage(product?.category ?? "Fish"));
+    const comboCategoriesForCart = includedProducts
+      .slice(0, 3)
+      .map(({ product }) => product?.category ?? "Fish");
+    addToCart(
+      {
+        ...comboCartItem,
         comboImages: comboImagesForCart,
         comboCategories: comboCategoriesForCart,
-        availableQty: null,
-      } as any);
-    }
+      } as any,
+      qty
+    );
     setAdded(true);
     setTimeout(() => { setAdded(false); setIsCartOpen(true); }, 800);
   };
@@ -655,8 +673,9 @@ export default function ComboDetail() {
                 >−</button>
                 <span className="text-base font-semibold w-5 text-center" data-testid="text-qty">{qty}</span>
                 <button
-                  onClick={() => setQty(q => q + 1)}
-                  className="text-xl font-bold text-foreground w-7 h-7 flex items-center justify-center hover:text-primary transition-colors"
+                  onClick={() => setQty(q => Math.min(q + 1, maxComboQty))}
+                  disabled={qty >= maxComboQty}
+                  className="text-xl font-bold text-foreground w-7 h-7 flex items-center justify-center hover:text-primary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   data-testid="button-qty-increase"
                 >+</button>
               </div>
