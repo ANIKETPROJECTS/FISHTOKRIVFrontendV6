@@ -23,7 +23,7 @@ export function Footer() {
           <div className="sm:col-span-2 lg:col-span-1">
             <FishTokriLogo className="h-9 w-auto mb-4 brightness-0 invert" />
             <p className="text-white text-sm leading-relaxed mb-5">
-              Mumbai's freshest fish, seafood & meat, cleaned, packed, and delivered straight to your doorstep.
+              Thane's freshest fish, seafood & meat, cleaned, packed, and delivered straight to your doorstep.
             </p>
             <div className="flex items-center gap-3">
               <a href="https://www.instagram.com/fishtokri/" target="_blank" rel="noreferrer" aria-label="Instagram"
@@ -97,12 +97,6 @@ export function Footer() {
               Contact Us
             </h4>
             <ul className="space-y-3">
-              <li className="flex items-start gap-2.5">
-                <img src={pinIcon} alt="" aria-hidden className="w-4 h-4 shrink-0 mt-0.5" style={whiteFilter} />
-                <span className="text-white text-sm leading-snug">
-                  Shop No.2, Shiva Nand Society, Near, Jambli Naka, Khartan Road, Juhu Chandan Society, Thane West, Thane-400601, Maharashtra
-                </span>
-              </li>
               <li className="flex items-center gap-2.5">
                 <img src={phoneIcon} alt="" aria-hidden className="w-4 h-4 shrink-0" style={whiteFilter} />
                 <a href="tel:+919220200100" className="text-white text-sm hover:opacity-75 transition-opacity">

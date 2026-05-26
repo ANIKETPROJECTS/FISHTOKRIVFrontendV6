@@ -366,7 +366,7 @@ export default function ProductDetail() {
                 {strikePrice && <span className="text-base text-muted-foreground line-through mb-0.5">₹{strikePrice}</span>}
                 {effectiveDiscountPct > 0 && <span className="text-sm font-semibold text-green-600 mb-0.5">{effectiveDiscountPct}% off</span>}
               </div>
-              <p className="text-xs text-muted-foreground">Inclusive of all taxes. Free delivery on orders above ₹499.</p>
+              <p className="text-xs text-muted-foreground">Inclusive of all taxes.</p>
             </div>
 
             {/* Qty + Add to Cart */}

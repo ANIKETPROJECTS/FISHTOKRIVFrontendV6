@@ -573,60 +573,6 @@ export function CartDrawer() {
                               </button>
                             </div>
                           </div>
-                          {expandedInstructions[item.id] ? (
-                            <div className="px-3 pb-3 flex items-center gap-2">
-                              <span
-                                aria-hidden
-                                className="w-5 h-5 shrink-0 inline-block"
-                                style={{
-                                  backgroundColor: "#364F9F",
-                                  WebkitMaskImage: `url(${notesIconImg})`,
-                                  maskImage: `url(${notesIconImg})`,
-                                  WebkitMaskRepeat: "no-repeat",
-                                  maskRepeat: "no-repeat",
-                                  WebkitMaskSize: "contain",
-                                  maskSize: "contain",
-                                  WebkitMaskPosition: "center",
-                                  maskPosition: "center",
-                                }}
-                              />
-                              <input
-                                type="text"
-                                value={item.instruction || ""}
-                                onChange={e => updateInstruction(item.id, e.target.value)}
-                                placeholder="e.g. Thin sliced, curry cut, remove skin..."
-                                className="flex-1 h-7 text-xs bg-transparent border-0 border-b border-border/50 focus:border-[#364F9F] focus:outline-none focus:ring-0 px-0"
-                                autoFocus
-                                data-testid={`input-instruction-${item.id}`}
-                              />
-                            </div>
-                          ) : (
-                            <button
-                              className="w-full px-3 pb-2.5 flex items-center gap-1.5 text-xs font-medium"
-                              style={{ color: "#364F9F" }}
-                              onClick={() => setExpandedInstructions(p => ({ ...p, [item.id]: true }))}
-                              data-testid={`button-add-instruction-${item.id}`}
-                            >
-                              <span
-                                aria-hidden
-                                className="w-5 h-5 shrink-0 inline-block"
-                                style={{
-                                  backgroundColor: "#364F9F",
-                                  WebkitMaskImage: `url(${notesIconImg})`,
-                                  maskImage: `url(${notesIconImg})`,
-                                  WebkitMaskRepeat: "no-repeat",
-                                  maskRepeat: "no-repeat",
-                                  WebkitMaskSize: "contain",
-                                  maskSize: "contain",
-                                  WebkitMaskPosition: "center",
-                                  maskPosition: "center",
-                                }}
-                              />
-                              {item.instruction
-                                ? <span className="text-muted-foreground truncate">"{item.instruction}"</span>
-                                : "Add Instruction"}
-                            </button>
-                          )}
                         </div>
                       ))}
                     </div>

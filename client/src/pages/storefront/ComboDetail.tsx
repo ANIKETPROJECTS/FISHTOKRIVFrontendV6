@@ -607,7 +607,7 @@ export default function ComboDetail() {
                 <span className="text-base text-muted-foreground line-through mb-0.5">₹{combo.originalPrice}</span>
                 <span className="text-sm font-semibold text-green-600 mb-0.5">{combo.discount}% off</span>
               </div>
-              <p className="text-xs text-muted-foreground">Inclusive of all taxes. Free delivery on orders above ₹499.</p>
+              <p className="text-xs text-muted-foreground">Inclusive of all taxes.</p>
             </div>
 
             {/* Savings highlight */}
