@@ -16,6 +16,7 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SwipeHint } from "@/components/storefront/SwipeHint";
 import type { Product } from "@shared/schema";
 
@@ -168,7 +169,13 @@ export default function ProductDetail() {
     : 999;
   const [offersExpanded, setOffersExpanded] = useState(false);
 
-  const { coupons: liveCoupons } = useProductCoupons(productId, product?.couponIds ?? []);
+  const { coupons: rawProductCoupons } = useProductCoupons(productId, product?.couponIds ?? []);
+  const { data: userCouponUsage = {} } = useQuery<Record<string, { usedCount: number; limit: number; isExhausted: boolean; message: string }>>({
+    queryKey: ["/api/coupons/user-usage"],
+    enabled: !!customer,
+    staleTime: 0,
+  });
+  const liveCoupons = rawProductCoupons.filter(c => !(!!customer && userCouponUsage[c.code]?.isExhausted));
 
   const dummy = product ? getDummyDetail(product.category) : null;
   const hasDiscount = product?.originalPrice != null && product?.price != null && product.originalPrice > product.price;

@@ -364,7 +364,12 @@ export default function ComboDetail() {
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["/api/products"] });
   const { data: allCombos = [] } = useQuery<Combo[]>({ queryKey: ["/api/combos"] });
   const { data: allCoupons = [] } = useCoupons();
-  const liveCoupons = (allCoupons ?? []).filter((c) => c.isActive);
+  const { data: userCouponUsage = {} } = useQuery<Record<string, { usedCount: number; limit: number; isExhausted: boolean; message: string }>>({
+    queryKey: ["/api/coupons/user-usage"],
+    enabled: !!customer,
+    staleTime: 0,
+  });
+  const liveCoupons = (allCoupons ?? []).filter((c) => c.isActive && !(!!customer && userCouponUsage[c.code]?.isExhausted));
 
   const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
 
