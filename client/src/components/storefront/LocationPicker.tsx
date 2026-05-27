@@ -194,7 +194,7 @@ export function LocationPicker() {
     if (pincode) {
       const clean = pincode.replace(/\s/g, "");
       const matchedSub = allSubHubs.find((sub) =>
-        sub.pincodes.some((p) => p.replace(/\s/g, "") === clean)
+        sub.pincodes.some((p) => p.pincode.replace(/\s/g, "") === clean)
       );
       if (matchedSub) {
         const matchedSuper = superHubs.find((s) => s.id === matchedSub.superHubId);
@@ -244,7 +244,7 @@ export function LocationPicker() {
           return;
         }
         const matchedSub = allSubHubs.find((sub) =>
-          sub.pincodes.some((p) => p.replace(/\s/g, "") === pincode)
+          sub.pincodes.some((p) => p.pincode.replace(/\s/g, "") === pincode)
         );
         if (!matchedSub) {
           setGeoStatus("unserviceable");
