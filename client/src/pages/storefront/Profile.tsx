@@ -364,6 +364,7 @@ function downloadInvoicePDF(order: OrderRequest, items: OrderItem[], subtotal: n
     <div class="row total"><span>Total</span><span>₹${total.toLocaleString()}</span></div>
   </div>
 
+  ${order.timeslotLabel ? `<div class="payment-row"><span style="color:#64748b;">Delivery Slot</span><span style="font-weight:600;">${order.timeslotLabel}</span></div>` : ''}
   <div class="payment-row"><span style="color:#64748b;">Payment Method</span><span style="font-weight:600;">${paymentMethod}</span></div>
   <div class="payment-row"><span style="color:#64748b;">Payment Status</span><span class="badge ${isPaid ? 'paid' : 'unpaid'}">${isPaid ? 'Paid' : 'Unpaid'}</span></div>
 
@@ -435,10 +436,16 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
         )}
       </div>
 
-      <div className="px-4 pb-3 flex items-start gap-2">
+      <div className="px-4 pb-1 flex items-start gap-2">
         <img src={headerLocationImg} alt="" className="w-3.5 h-3.5 object-contain mt-0.5 shrink-0" />
         <p className="text-xs text-muted-foreground leading-relaxed">{order.address}, {order.deliveryArea}</p>
       </div>
+      {order.timeslotLabel && (
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">{order.timeslotLabel}</p>
+        </div>
+      )}
 
       {!isCancelled && (
         <div className="px-4 pb-4">
@@ -569,6 +576,12 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
               <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-slate-200">
                 <span>Total</span><span>₹{total.toLocaleString()}</span>
               </div>
+              {order.timeslotLabel && (
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-slate-100">
+                  <span className="text-muted-foreground">Delivery Slot</span>
+                  <span className="font-semibold text-foreground text-right">{order.timeslotLabel}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-sm pt-2 border-t border-slate-100">
                 <span className="text-muted-foreground">Payment Method</span>
                 <span className="font-semibold text-foreground">
