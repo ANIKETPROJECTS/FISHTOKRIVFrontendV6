@@ -82,6 +82,7 @@ function toOrder(doc: any): OrderRequest {
           return {
             couponId: c.couponId?.toString() ?? null,
             code: c.code,
+            couponTitle: c.couponTitle ?? c.title ?? "",
             discountType: c.discountType,
             discountValue: c.discountValue,
             discountAmount: c.discountAmount ?? doc.discount ?? 0,

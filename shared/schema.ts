@@ -128,6 +128,7 @@ export type Timeslot = {
 export type OrderCoupon = {
   couponId: string | null;
   code: string;
+  couponTitle: string;
   discountType: string;
   discountValue: number;
   discountAmount: number;

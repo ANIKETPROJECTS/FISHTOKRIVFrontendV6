@@ -18,15 +18,15 @@ customerConnection.on("error", (err) => {
   console.error("Customer DB connection error:", err);
 });
 
-// Tracks per-customer, per-location coupon usage (excludes WELCOME100)
+// Permanent history of coupons from delivered orders — one entry per delivered order
 const usedCouponEntrySchema = new mongoose.Schema(
   {
-    couponId: { type: mongoose.Schema.Types.ObjectId, default: null },
-    code: { type: String, required: true, uppercase: true, trim: true },
-    usedCount: { type: Number, default: 1 },
-    maxAllowed: { type: Number, default: null }, // null = no per-user limit
-    location: { type: String, required: true },  // hub dbName (e.g. "Thane")
-    lastUsedAt: { type: Date, default: Date.now },
+    couponId: { type: String, required: true },
+    couponCode: { type: String, required: true, uppercase: true, trim: true },
+    couponTitle: { type: String, default: "" },
+    orderId: { type: String, required: true },
+    subHubId: { type: String, default: "" },
+    usedAt: { type: Date, default: Date.now },
   },
   { _id: false }
 );
