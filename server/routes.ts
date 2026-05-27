@@ -57,6 +57,112 @@ async function sendWhatsApp(campaignName: string, phone: string, templateParams:
   }
 }
 
+// ── Coupon lifecycle helpers ──────────────────────────────────────────────
+// These helpers keep activeCoupons and usedCoupons in sync with order lifecycle.
+
+async function addActiveCoupon(
+  phone: string,
+  couponId: string,
+  couponCode: string,
+  couponTitle: string,
+  subHubId: string,
+  orderId: string
+) {
+  const result = await CustomerDbModel.updateOne(
+    { phone, "activeCoupons.couponId": couponId },
+    {
+      $inc: { "activeCoupons.$.usedCount": 1 },
+      $addToSet: { "activeCoupons.$.orderIds": orderId },
+    }
+  );
+  if (result.matchedCount === 0) {
+    await CustomerDbModel.updateOne(
+      { phone },
+      {
+        $push: {
+          activeCoupons: {
+            couponId,
+            couponCode,
+            couponTitle,
+            subHubId,
+            usedCount: 1,
+            orderIds: [orderId],
+            appliedAt: new Date(),
+          },
+        },
+      }
+    );
+  }
+}
+
+async function removeActiveCoupon(phone: string, couponId: string, orderId: string) {
+  await CustomerDbModel.updateOne(
+    { phone, "activeCoupons.couponId": couponId },
+    { $inc: { "activeCoupons.$.usedCount": -1 } }
+  );
+  await (CustomerDbModel as any).updateOne(
+    { phone },
+    { $pull: { "activeCoupons.$[elem].orderIds": orderId } },
+    { arrayFilters: [{ "elem.couponId": couponId }] }
+  );
+  await CustomerDbModel.updateOne(
+    { phone },
+    { $pull: { activeCoupons: { couponId, usedCount: { $lte: 0 } } } }
+  );
+}
+
+async function addDeliveredCoupon(phone: string, couponId: string | null, couponCode: string, location: string) {
+  const custDoc = await CustomerDbModel.findOne({ phone }, { usedCoupons: 1 }).lean() as any;
+  const existingEntry = (custDoc?.usedCoupons ?? []).find(
+    (u: any) => u.code === couponCode && u.location === location
+  );
+  if (existingEntry) {
+    const currentCount = typeof existingEntry.usedCount === "number" && existingEntry.usedCount > 0
+      ? existingEntry.usedCount : 0;
+    await CustomerDbModel.updateOne(
+      { phone, usedCoupons: { $elemMatch: { code: couponCode, location } } },
+      { $set: { "usedCoupons.$.usedCount": currentCount + 1, "usedCoupons.$.lastUsedAt": new Date() } }
+    );
+  } else {
+    await CustomerDbModel.updateOne(
+      { phone },
+      {
+        $push: {
+          usedCoupons: {
+            couponId: couponId ?? null,
+            code: couponCode,
+            usedCount: 1,
+            maxAllowed: null,
+            location,
+            lastUsedAt: new Date(),
+          },
+        },
+      }
+    );
+  }
+}
+
+async function removeDeliveredCoupon(phone: string, couponCode: string, location: string) {
+  const custDoc = await CustomerDbModel.findOne({ phone }, { usedCoupons: 1 }).lean() as any;
+  const existingEntry = (custDoc?.usedCoupons ?? []).find(
+    (u: any) => u.code === couponCode && u.location === location
+  );
+  if (!existingEntry) return;
+  const currentCount = typeof existingEntry.usedCount === "number" && existingEntry.usedCount > 0
+    ? existingEntry.usedCount : 1;
+  if (currentCount <= 1) {
+    await CustomerDbModel.updateOne(
+      { phone },
+      { $pull: { usedCoupons: { code: couponCode, location } } }
+    );
+  } else {
+    await CustomerDbModel.updateOne(
+      { phone, usedCoupons: { $elemMatch: { code: couponCode, location } } },
+      { $set: { "usedCoupons.$.usedCount": currentCount - 1, "usedCoupons.$.lastUsedAt": new Date() } }
+    );
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -666,53 +772,15 @@ export async function registerRoutes(
             );
           }
 
-          // ALL coupons: track in customer.usedCoupons per location (unified)
-          // Fetch the current entry first so we can compute the exact new count
-          // (avoids $inc on null and arrayFilter reliability issues)
-          const maxAllowed = coupon?.perUserLimit ?? null;
-          const customerUsageDoc = await CustomerDbModel.findOne(
-            { phone: order.phone },
-            { usedCoupons: 1 }
-          ).lean() as any;
-
-          const existingEntry = (customerUsageDoc?.usedCoupons ?? []).find(
-            (u: any) => u.code === code && u.location === location
+          // Track in activeCoupons — incremented on order creation, decremented on cancel/deliver
+          await addActiveCoupon(
+            order.phone,
+            String(coupon?._id ?? ""),
+            code,
+            coupon?.title ?? "",
+            order.subHubId ?? "",
+            order.id
           );
-
-          if (existingEntry) {
-            // Subsequent use — compute exact new count and $set it (never $inc on potentially-null)
-            const currentCount = typeof existingEntry.usedCount === "number" && existingEntry.usedCount > 0
-              ? existingEntry.usedCount
-              : 0;
-            // $elemMatch ensures both code AND location match the SAME array element
-            // so the $ positional operator updates the correct entry, not a sibling entry
-            await CustomerDbModel.updateOne(
-              { phone: order.phone, usedCoupons: { $elemMatch: { code, location } } },
-              {
-                $set: {
-                  "usedCoupons.$.usedCount": currentCount + 1,
-                  "usedCoupons.$.lastUsedAt": new Date(),
-                },
-              }
-            );
-          } else {
-            // First use — push a fresh entry with usedCount explicitly set to 1
-            await CustomerDbModel.updateOne(
-              { phone: order.phone },
-              {
-                $push: {
-                  usedCoupons: {
-                    couponId: coupon?._id ?? null,
-                    code,
-                    usedCount: 1,
-                    maxAllowed,
-                    location,
-                    lastUsedAt: new Date(),
-                  },
-                },
-              }
-            );
-          }
         } catch (couponErr) {
           console.error("Coupon usage update error:", couponErr);
         }
@@ -742,11 +810,55 @@ export async function registerRoutes(
   app.patch(api.orders.updateStatus.path, requireAuth, async (req, res) => {
     try {
       const input = api.orders.updateStatus.input.parse(req.body);
+
+      // Fetch old order before updating so we know the previous status
+      const oldOrder = await storage.getOrderRequest(req.params.id);
+      const oldStatus = oldOrder?.status ?? "pending";
+
       const order = await storage.updateOrderRequestStatus(req.params.id, input.status);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
       await storage.updateCustomerOrderStatus(order.phone, order.id, input.status);
+
+      // ── Coupon lifecycle ────────────────────────────────────────────────
+      const couponCode = order.coupon?.code;
+      const couponId   = order.coupon?.couponId ?? "";
+      if (couponCode && couponId) {
+        const ACTIVE_STATUSES = new Set(["pending", "confirmed", "out_for_delivery", "takeaway"]);
+        const wasActive    = ACTIVE_STATUSES.has(oldStatus);
+        const isNowActive  = ACTIVE_STATUSES.has(input.status);
+        const wasCancelled = oldStatus === "cancelled";
+        const isDelivered  = input.status === "delivered";
+        const isCancelled  = input.status === "cancelled";
+
+        try {
+          // Resolve hub location (dbName) for usedCoupons legacy key
+          const subHub = order.subHubId
+            ? await SubHubModel.findById(order.subHubId).lean() as any
+            : null;
+          const location = subHub?.dbName ?? order.subHubName ?? "unknown";
+
+          if (wasActive && isCancelled) {
+            // Order cancelled → release coupon back
+            await removeActiveCoupon(order.phone, couponId, order.id);
+          } else if (wasActive && isDelivered) {
+            // Order delivered → move coupon to permanent history
+            await removeActiveCoupon(order.phone, couponId, order.id);
+            await addDeliveredCoupon(order.phone, couponId, couponCode, location);
+          } else if (wasCancelled && isNowActive) {
+            // Un-cancel → re-lock coupon
+            await addActiveCoupon(order.phone, couponId, couponCode, order.coupon?.code ?? "", order.subHubId ?? "", order.id);
+          } else if (oldStatus === "delivered" && isNowActive) {
+            // Un-deliver → move coupon back to active
+            await removeDeliveredCoupon(order.phone, couponCode, location);
+            await addActiveCoupon(order.phone, couponId, couponCode, "", order.subHubId ?? "", order.id);
+          }
+        } catch (couponLifecycleErr) {
+          console.error("[Coupon lifecycle] Error:", couponLifecycleErr);
+        }
+      }
+
       res.json(order);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -783,40 +895,50 @@ export async function registerRoutes(
         return res.json({ valid: false, message: `Minimum order of ₹${coupon.minOrderAmount} required` });
       }
 
-      // ── Step 2: Per-user coupon usage check (via customer.usedCoupons) ────
+      // ── Step 2: Per-user coupon usage check (activeCoupons + usedCoupons) ──
       if (userId) {
         const phone = String(userId);
+        const couponId = String(coupon._id);
 
-        // Fetch the user's usage entry for this coupon at this location.
-        // $elemMatch ensures BOTH code and location match on the SAME array element,
-        // so the $ positional operator returns the correct entry and not a sibling entry.
-        const customer = await CustomerDbModel.findOne(
-          { phone, usedCoupons: { $elemMatch: { code, location } } },
-          { "usedCoupons.$": 1 }
+        const custDoc = await CustomerDbModel.findOne(
+          { phone },
+          { activeCoupons: 1, usedCoupons: 1 }
         ).lean() as any;
-        const userEntry = customer?.usedCoupons?.[0];
-        // If entry exists but usedCount is null/non-numeric (corrupted data), treat as 1
-        // because the entry's existence confirms at least one past use
-        const rawUsedCount = userEntry?.usedCount;
-        const userUsedCount = userEntry
-          ? (typeof rawUsedCount === "number" && rawUsedCount > 0 ? rawUsedCount : 1)
+
+        // Count active (non-delivered) usage
+        const activeEntry = (custDoc?.activeCoupons ?? []).find(
+          (ac: any) => String(ac.couponId) === couponId
+        );
+        const activeCount = activeEntry ? (activeEntry.usedCount ?? 1) : 0;
+
+        // Count delivered (permanent) usage
+        const legacyEntry = (custDoc?.usedCoupons ?? []).find(
+          (u: any) => u.code === code && u.location === location
+        );
+        const legacyCount = legacyEntry
+          ? (typeof legacyEntry.usedCount === "number" && legacyEntry.usedCount > 0 ? legacyEntry.usedCount : 1)
           : 0;
 
-        if (coupon.isFirstTimeOnly || code === "WELCOME100") {
-          // Single-use per user: block if they've used it at all
-          if (userUsedCount >= 1) {
-            return res.json({ valid: false, message: code === "WELCOME100" ? "WELCOME100 can be used only once per account" : "This coupon is for first-time use only" });
-          }
-          // Also check legacy CouponUsage for backward compatibility
+        const totalUsed = activeCount + legacyCount;
+
+        // Per-customer limit: isFirstTimeOnly → 1; maxUsage > 0 → that value; else unlimited
+        const isFirstTimeOnly = coupon.isFirstTimeOnly || code === "WELCOME100";
+        const perCustomerLimit: number | null = isFirstTimeOnly
+          ? 1
+          : (coupon.maxUsage != null && coupon.maxUsage > 0 ? coupon.maxUsage : null);
+
+        if (perCustomerLimit !== null && totalUsed >= perCustomerLimit) {
+          const message = isFirstTimeOnly
+            ? (code === "WELCOME100" ? "WELCOME100 can be used only once per account" : "This coupon is for first-time use only")
+            : `Coupon usage limit reached (max ${perCustomerLimit} use${perCustomerLimit === 1 ? "" : "s"} per customer)`;
+          return res.json({ valid: false, message });
+        }
+
+        // Legacy CouponUsage check for isFirstTimeOnly coupons (backward compat)
+        if (isFirstTimeOnly) {
           const legacy = await hub.CouponUsage.findOne({ userId: phone, couponCode: code }).lean() as any;
           if (legacy && (legacy.usageCount ?? 0) >= 1) {
             return res.json({ valid: false, message: code === "WELCOME100" ? "WELCOME100 can be used only once per account" : "This coupon is for first-time use only" });
-          }
-        } else {
-          // Default max 3 uses per user, unless coupon has a custom perUserLimit
-          const limit = (coupon.perUserLimit !== null && coupon.perUserLimit !== undefined) ? coupon.perUserLimit : 3;
-          if (userUsedCount >= limit) {
-            return res.json({ valid: false, message: `Coupon usage limit reached (max ${limit} use${limit === 1 ? "" : "s"} per customer)` });
           }
         }
       }
@@ -859,25 +981,41 @@ export async function registerRoutes(
       const location = (req.headers["x-hub-db"] as string | undefined) ?? "unknown";
 
       const [customer, coupons] = await Promise.all([
-        CustomerDbModel.findOne({ phone }, { usedCoupons: 1 }).lean() as any,
+        CustomerDbModel.findOne({ phone }, { activeCoupons: 1, usedCoupons: 1 }).lean() as any,
         hub.Coupon.find({ isActive: true }).lean() as any[],
       ]);
 
-      const userUsedCoupons: any[] = (customer?.usedCoupons ?? []).filter(
+      // Legacy usedCoupons entries for this location (delivered orders history)
+      const legacyUsedCoupons: any[] = (customer?.usedCoupons ?? []).filter(
         (u: any) => u.location === location
       );
+      // activeCoupons entries for currently active orders
+      const activeCoupons: any[] = customer?.activeCoupons ?? [];
 
-      const result: Record<string, { usedCount: number; limit: number; isExhausted: boolean; message: string }> = {};
+      const result: Record<string, { usedCount: number; limit: number | null; isExhausted: boolean; message: string }> = {};
       for (const coupon of coupons) {
-        const userEntry = userUsedCoupons.find((u: any) => u.code === coupon.code);
-        // If entry exists but usedCount is null/corrupt, treat as 1 (entry confirms at least one use)
-        const rawCount = userEntry?.usedCount;
-        const usedCount = userEntry
+        const couponId = String(coupon._id);
+
+        // Active (non-delivered) usage
+        const activeEntry = activeCoupons.find((ac: any) => String(ac.couponId) === couponId);
+        const activeCount = activeEntry ? (activeEntry.usedCount ?? 1) : 0;
+
+        // Delivered (permanent) usage
+        const legacyEntry = legacyUsedCoupons.find((u: any) => u.code === coupon.code);
+        const rawCount = legacyEntry?.usedCount;
+        const legacyCount = legacyEntry
           ? (typeof rawCount === "number" && rawCount > 0 ? rawCount : 1)
           : 0;
+
+        const usedCount = activeCount + legacyCount;
+
+        // Per-customer limit: isFirstTimeOnly → 1; maxUsage > 0 → that value; else unlimited
         const isFirstTimeOnly = coupon.isFirstTimeOnly || coupon.code === "WELCOME100";
-        const limit = isFirstTimeOnly ? 1 : ((coupon.perUserLimit !== null && coupon.perUserLimit !== undefined) ? coupon.perUserLimit : 3);
-        const isExhausted = usedCount >= limit;
+        const limit: number | null = isFirstTimeOnly
+          ? 1
+          : (coupon.maxUsage != null && coupon.maxUsage > 0 ? coupon.maxUsage : null);
+
+        const isExhausted = limit !== null && usedCount >= limit;
         const message = isExhausted
           ? isFirstTimeOnly
             ? coupon.code === "WELCOME100"

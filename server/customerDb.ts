@@ -75,6 +75,20 @@ const embeddedOrderSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Tracks coupons locked in currently active (non-delivered) orders
+const activeCouponEntrySchema = new mongoose.Schema(
+  {
+    couponId: { type: String, required: true },
+    couponCode: { type: String, required: true, uppercase: true, trim: true },
+    couponTitle: { type: String, default: "" },
+    subHubId: { type: String, default: "" },
+    usedCount: { type: Number, default: 1 },
+    orderIds: { type: [String], default: [] },
+    appliedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const customerSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   name: { type: String, default: null },
@@ -82,6 +96,7 @@ const customerSchema = new mongoose.Schema({
   dateOfBirth: { type: String, default: null },
   addresses: { type: [customerAddressSchema], default: [] },
   orders: { type: [embeddedOrderSchema], default: [] },
+  activeCoupons: { type: [activeCouponEntrySchema], default: [] },
   usedCoupons: { type: [usedCouponEntrySchema], default: [] },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
