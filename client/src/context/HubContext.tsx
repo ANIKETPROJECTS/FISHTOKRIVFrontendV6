@@ -30,6 +30,7 @@ interface HubContextValue {
   setHub: (superHub: SuperHub, subHub: SubHub) => void;
   clearHub: () => void;
   isPickerOpen: boolean;
+  isPickerRequired: boolean;
   openPicker: () => void;
   closePicker: () => void;
 }
@@ -40,11 +41,13 @@ const HubContext = createContext<HubContextValue>({
   setHub: () => {},
   clearHub: () => {},
   isPickerOpen: false,
+  isPickerRequired: false,
   openPicker: () => {},
   closePicker: () => {},
 });
 
 const STORAGE_KEY = "fishtokri_hub";
+const USER_PICKED_KEY = "fishtokri_user_picked";
 
 const DEFAULT_SUPER_HUB_NAME = "Mumbai";
 const DEFAULT_SUB_HUB_NAME = "Thane";
@@ -73,17 +76,19 @@ export function HubProvider({ children }: { children: ReactNode }) {
   const [selectedSuperHub, setSelectedSuperHub] = useState<SuperHub | null>(null);
   const [selectedSubHub, setSelectedSubHub] = useState<SubHub | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isPickerRequired, setIsPickerRequired] = useState(false);
 
   useEffect(() => {
     const init = async () => {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
+        const userPicked = localStorage.getItem(USER_PICKED_KEY);
+        if (saved && userPicked) {
           const { superHub, subHub } = JSON.parse(saved);
           setSelectedSuperHub(superHub);
           setSelectedSubHub(subHub);
           setActiveHubDb(subHub.dbName);
-          return;
+          return; // returning user has already picked — skip forced picker
         }
       } catch {}
 
@@ -96,6 +101,9 @@ export function HubProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ superHub, subHub }));
         queryClient.invalidateQueries();
       }
+      // Force the picker open — user must enter their pincode before using the site
+      setIsPickerOpen(true);
+      setIsPickerRequired(true);
     };
 
     init();
@@ -106,8 +114,10 @@ export function HubProvider({ children }: { children: ReactNode }) {
     setSelectedSubHub(subHub);
     setActiveHubDb(subHub.dbName);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ superHub, subHub }));
+    localStorage.setItem(USER_PICKED_KEY, "1"); // mark user as having explicitly picked
     queryClient.invalidateQueries();
     setIsPickerOpen(false);
+    setIsPickerRequired(false);
   }, []);
 
   const clearHub = useCallback(() => {
@@ -115,13 +125,16 @@ export function HubProvider({ children }: { children: ReactNode }) {
     setSelectedSubHub(null);
     setActiveHubDb(null);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(USER_PICKED_KEY);
     queryClient.invalidateQueries();
   }, []);
 
   return (
     <HubContext.Provider value={{
       selectedSuperHub, selectedSubHub, setHub, clearHub,
-      isPickerOpen, openPicker: () => setIsPickerOpen(true), closePicker: () => setIsPickerOpen(false),
+      isPickerOpen, isPickerRequired,
+      openPicker: () => setIsPickerOpen(true),
+      closePicker: () => { if (!isPickerRequired) setIsPickerOpen(false); },
     }}>
       {children}
     </HubContext.Provider>

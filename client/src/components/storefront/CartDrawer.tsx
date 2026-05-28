@@ -138,6 +138,7 @@ export function CartDrawer() {
   const [showAllCoupons, setShowAllCoupons] = useState(false);
   const [couponExpanded, setCouponExpanded] = useState(false);
   const [timeslotExpanded, setTimeslotExpanded] = useState(false);
+  const [isNextDay, setIsNextDay] = useState(false);
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [applyingCouponId, setApplyingCouponId] = useState<string | null>(null);
 
@@ -294,24 +295,24 @@ export function CartDrawer() {
   const isSlotAvailable = useCallback((slot: Timeslot): boolean => {
     if (slot.isInstant) return true;
     const now = new Date();
-    // A slot is available until its END time passes.
-    // If endTime is missing fall back to startTime as the cutoff.
-    const cutoffStr = slot.endTime ?? extractSlotStartTime(slot);
-    if (cutoffStr) {
-      const cutoff = parseTimeStr(cutoffStr);
-      if (cutoff && now >= cutoff) return false;
+    // A slot is unavailable once its START time has passed.
+    const startStr = extractSlotStartTime(slot);
+    if (startStr) {
+      const startTime = parseTimeStr(startStr);
+      if (startTime && now >= startTime) return false;
     }
     return true;
   }, [parseTimeStr, extractSlotStartTime]);
 
   const availableTimeslots = timeslots.filter(isSlotAvailable);
-  const selectedTimeslot = availableTimeslots.find(t => t.id === selectedTimeslotId) ?? null;
+  const displayTimeslots = isNextDay ? timeslots.filter(t => !t.isInstant) : availableTimeslots;
+  const selectedTimeslot = (isNextDay ? timeslots : availableTimeslots).find(t => t.id === selectedTimeslotId) ?? null;
 
   useEffect(() => {
-    if (selectedTimeslotId && !availableTimeslots.find(t => t.id === selectedTimeslotId)) {
+    if (selectedTimeslotId && !displayTimeslots.find(t => t.id === selectedTimeslotId)) {
       setSelectedTimeslotId(null);
     }
-  }, [availableTimeslots, selectedTimeslotId]);
+  }, [isNextDay, availableTimeslots, selectedTimeslotId]);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [addForm, setAddForm] = useState(emptyForm);
@@ -565,7 +566,8 @@ export function CartDrawer() {
     const slotCharge = pincodeDeliveryCharge + instantCharge;
     const subtotal = totalPrice;
     const today = new Date();
-    const deliveryDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const orderDate = isNextDay ? new Date(today.getTime() + 24 * 60 * 60 * 1000) : today;
+    const deliveryDate = `${orderDate.getFullYear()}-${String(orderDate.getMonth() + 1).padStart(2, "0")}-${String(orderDate.getDate()).padStart(2, "0")}`;
 
     // Build payments array per admin-panel spec:
     // - wallet entry first (if wallet used), then remaining cash/UPI entry
@@ -706,7 +708,7 @@ export function CartDrawer() {
               ) : (
                 <div className="flex-1 flex flex-col overflow-hidden">
                   <div className="flex-1 overflow-y-auto scrollbar-hide">
-                    {savedTotal > 0 && (
+                    {(savedTotal + discountAmount) > 0 && (
                       <div className="mx-4 -mt-2 -mb-2 flex items-center justify-center px-2">
                         <div className="w-12 h-12 -mr-1 overflow-hidden flex items-center justify-center shrink-0">
                           <Lottie
@@ -718,7 +720,7 @@ export function CartDrawer() {
                         </div>
                         <p className="text-sm font-semibold leading-tight">
                           <span style={{ color: "#F05B4E" }}>Congratulations!</span>
-                          <span style={{ color: "#364F9F" }}> You've saved ₹{savedTotal}</span>
+                          <span style={{ color: "#364F9F" }}> You've saved ₹{savedTotal + discountAmount}</span>
                         </p>
                       </div>
                     )}
@@ -1333,11 +1335,27 @@ export function CartDrawer() {
                           />
                           Select Time Slot
                         </h3>
-                        {selectedTimeslot && (
-                          selectedTimeslot.isInstant && (selectedTimeslot.extraCharge ?? 0) > 0
-                            ? <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">+₹{selectedTimeslot.extraCharge}</span>
-                            : <span className="text-xs font-semibold text-emerald-600">FREE</span>
+                        {selectedTimeslot?.isInstant && (selectedTimeslot.extraCharge ?? 0) > 0 && (
+                          <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">+₹{selectedTimeslot.extraCharge}</span>
                         )}
+                      </div>
+
+                      {/* Today / Next Day toggle */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <button
+                          type="button"
+                          onClick={() => { setIsNextDay(false); setSelectedTimeslotId(null); }}
+                          className={`flex-1 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${!isNextDay ? "border-[#364F9F] bg-[#364F9F] text-white" : "border-border/40 text-muted-foreground bg-white"}`}
+                        >
+                          Today
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setIsNextDay(true); setSelectedTimeslotId(null); }}
+                          className={`flex-1 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${isNextDay ? "border-[#364F9F] bg-[#364F9F] text-white" : "border-border/40 text-muted-foreground bg-white"}`}
+                        >
+                          Next Day
+                        </button>
                       </div>
 
                       <div className="space-y-2">
@@ -1345,12 +1363,12 @@ export function CartDrawer() {
                             <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
                               <Loader2 className="w-4 h-4 animate-spin" /> Loading slots...
                             </div>
-                          ) : availableTimeslots.length === 0 ? (
+                          ) : displayTimeslots.length === 0 ? (
                             <div className="py-4 text-center text-sm text-muted-foreground">
-                              No slots available for today
+                              No slots available
                             </div>
                           ) : (
-                            availableTimeslots.map(slot => {
+                            displayTimeslots.map(slot => {
                               const isSelected = selectedTimeslotId === slot.id;
                               const adjustedLabel = getAdjustedSlotLabel(slot);
                               const hasDelay = !slot.isInstant && pincodeTimeDelay > 0;
@@ -1371,11 +1389,9 @@ export function CartDrawer() {
                                         {adjustedLabel}
                                       </span>
                                     </div>
-                                    {slot.isInstant && (slot.extraCharge ?? 0) > 0 ? (
+                                    {slot.isInstant && (slot.extraCharge ?? 0) > 0 && (
                                       <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full shrink-0">+₹{slot.extraCharge}</span>
-                                    ) : !slot.isInstant ? (
-                                      <span className="text-xs font-semibold text-emerald-600 shrink-0">FREE</span>
-                                    ) : null}
+                                    )}
                                   </div>
                                 </button>
                               </div>

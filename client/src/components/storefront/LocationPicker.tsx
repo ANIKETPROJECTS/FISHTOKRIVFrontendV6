@@ -16,7 +16,7 @@ const WA_LINK = `https://wa.me/${PHONE.replace("+", "")}?text=${encodeURICompone
 type CheckStatus = "idle" | "checking" | "eligible" | "ineligible";
 
 export function LocationPicker() {
-  const { isPickerOpen, closePicker, setHub } = useHub();
+  const { isPickerOpen, isPickerRequired, closePicker, setHub } = useHub();
 
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [status, setStatus] = useState<CheckStatus>("idle");
@@ -120,7 +120,10 @@ export function LocationPicker() {
       className="fixed inset-0 z-[300] flex items-center justify-center px-4"
       style={{ fontFamily: "'Poppins', sans-serif" }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={isPickerRequired ? undefined : handleClose}
+      />
 
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
 
