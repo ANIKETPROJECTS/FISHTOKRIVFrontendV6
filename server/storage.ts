@@ -95,6 +95,7 @@ function toOrder(doc: any): OrderRequest {
     payments: doc.payments ?? [],
     paidAmount: doc.paidAmount ?? 0,
     dueAmount: doc.dueAmount ?? (doc.total ?? 0),
+    deliveryDate: doc.deliveryDate ?? null,
     superHubId: doc.superHubId?.toString() ?? null,
     subHubId: doc.subHubId?.toString() ?? null,
     subHubName: doc.subHubName ?? null,
