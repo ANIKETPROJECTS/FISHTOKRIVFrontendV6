@@ -36,7 +36,9 @@ export function ProductCard({ product }: { product: Product }) {
     }
   };
 
-  const details = DUMMY_DETAILS[product.category] ?? DUMMY_DETAILS["Fish"];
+  const dummyFallback = DUMMY_DETAILS[product.category] ?? DUMMY_DETAILS["Fish"];
+  const piecesText = product.pieces || null;
+  const servesText = product.serves || null;
   const hasDiscount = product.originalPrice != null && product.price != null && product.originalPrice > product.price;
   const discountPct = hasDiscount ? Math.round((product.originalPrice! - product.price!) / product.originalPrice! * 100) : null;
   const strikePrice = hasDiscount ? product.originalPrice : null;
@@ -113,7 +115,19 @@ export function ProductCard({ product }: { product: Product }) {
               <span>&nbsp;&nbsp;|&nbsp;&nbsp;</span>
             </>
           )}
-          {details.pieces}&nbsp;&nbsp;|&nbsp;&nbsp;{details.serves}
+          {piecesText && (
+            <>
+              <span className="font-medium text-foreground/80">{piecesText}</span>
+              {!piecesText.toLowerCase().includes("piece") && <span> Pieces</span>}
+              {(servesText || product.grossWeight) && <span>&nbsp;&nbsp;|&nbsp;&nbsp;</span>}
+            </>
+          )}
+          {servesText && (
+            <>
+              <span className="font-medium text-foreground/80">{servesText}</span>
+              {!servesText.toLowerCase().includes("serv") && <span> Serving</span>}
+            </>
+          )}
         </p>
 
         <div className="flex items-center justify-between mt-auto pt-1">

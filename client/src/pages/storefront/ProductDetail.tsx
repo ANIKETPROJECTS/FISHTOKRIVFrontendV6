@@ -304,6 +304,9 @@ export default function ProductDetail() {
                 />
                 <span className="text-sm sm:text-lg font-semibold leading-tight">
                   {product.pieces || dummy.pieces}
+                  {product.pieces && !product.pieces.toLowerCase().includes("piece") && (
+                    <span className="text-xs sm:text-sm font-normal ml-1">Pieces</span>
+                  )}
                 </span>
               </div>
 
@@ -326,6 +329,9 @@ export default function ProductDetail() {
                 />
                 <span className="text-sm sm:text-lg font-semibold leading-tight">
                   {product.serves || dummy.serves}
+                  {product.serves && !product.serves.toLowerCase().includes("serv") && (
+                    <span className="text-xs sm:text-sm font-normal ml-1">Serving</span>
+                  )}
                 </span>
               </div>
 
