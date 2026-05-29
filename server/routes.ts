@@ -762,14 +762,18 @@ export async function registerRoutes(
         }
       }
 
-      // Increment timeslot order count (today vs next-day)
-      if (input.timeslotId && input.hubDbName && input.scheduleType !== "instant") {
+      // Increment timeslot order count (today vs next-day) — match by startTime
+      if (input.timeslotStart && input.hubDbName && input.scheduleType !== "instant") {
         try {
           const hub = await getHubModels(input.hubDbName);
           const today = new Date();
           const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
           const countField = (input.deliveryDate && input.deliveryDate !== todayStr) ? "nextDayOrderCount" : "todaysOrderCount";
-          await hub.Timeslot.findByIdAndUpdate(input.timeslotId, { $inc: { [countField]: 1 } }, { strict: false });
+          await hub.Timeslot.findOneAndUpdate(
+            { startTime: input.timeslotStart },
+            { $inc: { [countField]: 1 } },
+            { strict: false }
+          );
         } catch (timeslotCountErr) {
           console.error("[Timeslot] Count increment error:", timeslotCountErr);
         }
