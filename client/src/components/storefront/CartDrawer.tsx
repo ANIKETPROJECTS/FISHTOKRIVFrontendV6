@@ -736,7 +736,11 @@ export function CartDrawer() {
             blocks: {
               upi_block: {
                 name: "Pay via UPI",
-                instruments: [{ method: "upi" }],
+                instruments: [
+                  { method: "upi", flow: "intent" },
+                  { method: "upi", flow: "collect" },
+                  { method: "upi", flow: "qr" },
+                ],
               },
             },
             sequence: ["block.upi_block"],
