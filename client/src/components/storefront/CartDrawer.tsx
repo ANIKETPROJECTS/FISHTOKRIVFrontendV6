@@ -731,22 +731,6 @@ export function CartDrawer() {
           contact: `91${selected.phone || customer?.phone || ""}`,
           email: customer?.email || "",
         },
-        config: {
-          display: {
-            blocks: {
-              upi_block: {
-                name: "Pay via UPI",
-                instruments: [
-                  { method: "upi", flow: "intent" },
-                  { method: "upi", flow: "collect" },
-                  { method: "upi", flow: "qr" },
-                ],
-              },
-            },
-            sequence: ["block.upi_block"],
-            preferences: { show_default_blocks: false },
-          },
-        },
         handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
           // Mark as succeeded immediately so ondismiss (which fires after handler) doesn't show a false "cancelled" toast
           paymentSucceededRef.current = true;
