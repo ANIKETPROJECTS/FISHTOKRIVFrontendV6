@@ -32,7 +32,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
       return res.json();
     },
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
   });
 
   const logout = useCallback(async () => {
