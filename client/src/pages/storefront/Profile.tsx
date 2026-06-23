@@ -309,8 +309,12 @@ function downloadInvoicePDF(order: OrderRequest, items: OrderItem[], subtotal: n
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; color:#1e293b; background:#fff; }
     .page { padding: 36px 40px; min-height: 100vh; }
-    .header { display:flex; align-items:center; justify-content:space-between; padding-bottom:18px; border-bottom:2.5px solid #364F9F; margin-bottom:22px; }
+    .header { display:flex; align-items:flex-start; justify-content:space-between; padding-bottom:18px; border-bottom:2.5px solid #364F9F; margin-bottom:22px; }
+    .brand-block { display:flex; flex-direction:column; gap:2px; }
     .brand-sub { font-size:11px; color:#64748b; margin-top:4px; }
+    .company-details { margin-top:8px; }
+    .company-details p { font-size:11px; color:#475569; line-height:1.7; }
+    .company-details .detail-label { font-weight:700; color:#1e293b; }
     .invoice-meta { text-align:right; }
     .invoice-meta .tax-label { font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:#94a3b8; margin-bottom:4px; }
     .invoice-meta .id { font-size:15px; font-weight:800; color:#364F9F; }
@@ -347,9 +351,15 @@ function downloadInvoicePDF(order: OrderRequest, items: OrderItem[], subtotal: n
 <body>
 <div class="page">
   <div class="header">
-    <div>
+    <div class="brand-block">
       ${FISHTOKRI_LOGO_SVG}
       <div class="brand-sub">Fresh Seafood &amp; Meat &middot; Mumbai</div>
+      <div class="company-details">
+        <p><span class="detail-label">ADD :</span> Thane, Mumbai</p>
+        <p><span class="detail-label">Mob No :</span> 9220200100</p>
+        <p><span class="detail-label">GST No :</span> 27AAOCA7628P1ZT</p>
+        <p><span class="detail-label">FSSAI :</span> 75050106800481</p>
+      </div>
     </div>
     <div class="invoice-meta">
       <div class="tax-label">Tax Invoice</div>
