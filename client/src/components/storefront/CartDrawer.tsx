@@ -692,7 +692,10 @@ export function CartDrawer() {
     // Wallet covers entire total — place order directly, no payment method needed
     if (finalTotal === 0) {
       createOrder(buildOrderPayload(selected), {
-        onSuccess: () => { setIsSuccess(true); clearCart(); setUseWallet(false); }
+        onSuccess: () => { setIsSuccess(true); clearCart(); setUseWallet(false); },
+        onError: (err: any) => {
+          toast({ title: err?.message || "Could not place order. Please try again.", variant: "destructive" });
+        },
       });
       return;
     }
@@ -700,7 +703,10 @@ export function CartDrawer() {
     // COD flow: place order directly
     if (paymentMethod === "cod") {
       createOrder(buildOrderPayload(selected), {
-        onSuccess: () => { setIsSuccess(true); clearCart(); setUseWallet(false); }
+        onSuccess: () => { setIsSuccess(true); clearCart(); setUseWallet(false); },
+        onError: (err: any) => {
+          toast({ title: err?.message || "Could not place order. Please try again.", variant: "destructive" });
+        },
       });
       return;
     }
@@ -776,9 +782,11 @@ export function CartDrawer() {
                 setIsProcessingPayment(false);
                 paymentSucceededRef.current = false;
               },
-              onError: () => {
+              onError: (err: any) => {
                 paymentSucceededRef.current = false;
                 setIsProcessingPayment(false);
+                setIsCartOpen(true);
+                toast({ title: err?.message || "Could not place order. Please try again.", variant: "destructive" });
               },
             });
           } catch {

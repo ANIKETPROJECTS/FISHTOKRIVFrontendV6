@@ -571,9 +571,35 @@ export async function registerRoutes(
         for (const item of input.items) {
           // Always fetch the LATEST quantity from DB right before deducting
           const product = await hub.Product.findById(item.productId).lean() as any;
-          if (!product || !product.inventoryBatches || product.inventoryBatches.length === 0) continue;
+          if (!product) continue;
 
-          // Pre-flight stock check against current DB state
+          const hasBatches = Array.isArray(product.inventoryBatches) && product.inventoryBatches.length > 0;
+
+          if (!hasBatches) {
+            // ── No inventory batches: atomically decrement the top-level quantity field.
+            // The $gte guard ensures we can NEVER deduct more than what actually exists,
+            // even when two orders arrive simultaneously.
+            const atomicResult = await hub.Product.findOneAndUpdate(
+              { _id: item.productId, quantity: { $gte: item.quantity } },
+              { $inc: { quantity: -item.quantity }, $set: { updatedAt: new Date() } }
+            );
+            if (!atomicResult) {
+              // Re-read to give an accurate "how many are left" message
+              const fresh = await hub.Product.findById(item.productId).select("name quantity").lean() as any;
+              const left = fresh?.quantity ?? 0;
+              return res.status(409).json({
+                message: left > 0
+                  ? `"${product.name}" has only ${left} unit(s) available. Please update your cart.`
+                  : `"${product.name}" just went out of stock. Please refresh and try again.`,
+              });
+            }
+            continue;
+          }
+
+          // ── Batch-based path (FIFO) ────────────────────────────────────────────
+
+          // Pre-flight stock check against current DB state (non-blocking optimisation;
+          // the real guard is the atomic $gte on each batch below)
           const totalAvailable = (product.inventoryBatches as any[]).reduce(
             (sum: number, b: any) => sum + b.quantity, 0
           );
@@ -632,15 +658,17 @@ export async function registerRoutes(
             });
           }
 
-          // Remove zero-quantity batches and sync the product's total quantity field
-          const afterDeduct = await hub.Product.findById(item.productId).lean() as any;
-          const activeBatches = (afterDeduct.inventoryBatches ?? []).filter((b: any) => b.quantity > 0);
-          const totalQty = activeBatches.reduce((sum: number, b: any) => sum + b.quantity, 0);
+          // Remove zero-quantity batches atomically ($pull is safe for concurrent writes)
+          // then recalculate the denormalised top-level quantity field.
           await hub.Product.findByIdAndUpdate(item.productId, {
-            inventoryBatches: activeBatches,
-            quantity: totalQty,
-            updatedAt: new Date(),
+            $pull: { inventoryBatches: { quantity: { $lte: 0 } } },
+            $set: { updatedAt: new Date() },
           });
+          const afterDeduct = await hub.Product.findById(item.productId).lean() as any;
+          const totalQty = (afterDeduct?.inventoryBatches ?? []).reduce(
+            (sum: number, b: any) => sum + b.quantity, 0
+          );
+          await hub.Product.findByIdAndUpdate(item.productId, { $set: { quantity: totalQty } });
         }
       }
 
