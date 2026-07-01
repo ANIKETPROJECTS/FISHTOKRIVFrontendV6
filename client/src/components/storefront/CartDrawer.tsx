@@ -132,7 +132,7 @@ export function CartDrawer() {
   const pendingRzpOrderIdRef = useRef<string | null>(null);
   const pendingSelectedAddressRef = useRef<any>(null);
   const returningFromUpiRef = useRef(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("cod");
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "online">("online");
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showUnserviceablePopup, setShowUnserviceablePopup] = useState(false);
   const [unserviceablePincode, setUnserviceablePincode] = useState("");
@@ -1696,8 +1696,8 @@ export function CartDrawer() {
                       </h3>
                       <div className="space-y-2">
                         {[
-                          { value: "cod", label: "Cash on Delivery" },
                           { value: "online", label: "UPI" },
+                          { value: "cod", label: "Cash on Delivery" },
                         ].map(opt => (
                           <button
                             key={opt.value}

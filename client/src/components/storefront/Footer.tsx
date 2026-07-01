@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useEffect, useRef, useState } from "react";
 import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
 
 import instaIcon from "@assets/instagram_(5)_1778180430452.png";
@@ -6,12 +7,48 @@ import fbIcon from "@assets/facebook_(5)_1778180449916.png";
 import ytIcon from "@assets/youtube_(2)_1778180468466.png";
 import waIcon from "@assets/logo_(14)_1778180502395.png";
 
-import pinIcon from "@assets/pin_(1)_1778180652425.png";
 import phoneIcon from "@assets/telephone_1778180674008.png";
 import mailIcon from "@assets/email_1778180701088.png";
 import clockIcon from "@assets/clock_(1)_1778180727425.png";
 
 const whiteFilter = { filter: "brightness(0) invert(1)" } as const;
+
+function LazyMap() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="rounded-xl overflow-hidden border border-white/20 w-full flex-1" style={{ minHeight: "200px" }}>
+      {visible ? (
+        <iframe
+          title="FishTokri Location"
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3767.5!2d72.9783!3d19.2183!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTnCsDEzJzA2LjAiTiA3MsKwNTgnNDIuMCJF!5e0!3m2!1sen!2sin!4v1!5m2!1sen!2sin&q=Shop+No+2+Wing+R7+214+Khartan+Road+Thane+West+400601"
+          width="100%"
+          height="100%"
+          style={{ border: 0, minHeight: "200px", display: "block" }}
+          allowFullScreen
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      ) : (
+        <div className="w-full bg-white/10 flex items-center justify-center" style={{ minHeight: "200px" }}>
+          <span className="text-white/50 text-xs">Loading map…</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function Footer() {
   return (
@@ -39,7 +76,7 @@ export function Footer() {
                 className="w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden transition-all duration-200 hover:scale-110 hover:opacity-90">
                 <img src={waIcon} alt="WhatsApp" className="w-10 h-10 object-cover" />
               </a>
-              <a href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube"
+              <a href="https://www.youtube.com/@fishtokri" target="_blank" rel="noreferrer" aria-label="YouTube"
                 className="w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden transition-all duration-200 hover:scale-110 hover:opacity-90">
                 <img src={ytIcon} alt="YouTube" className="w-10 h-10 object-cover" />
               </a>
@@ -76,17 +113,17 @@ export function Footer() {
             </h4>
             <ul className="space-y-2.5">
               {[
-                { label: "My Orders", href: "/profile" },
-                { label: "My Profile", href: "/profile" },
-                { label: "Terms & Conditions", href: "#" },
-                { label: "Privacy Policy", href: "#" },
-                { label: "Refund Policy", href: "#" },
-                { label: "FAQ", href: "#" },
-              ].map(({ label, href }) => (
+                { label: "My Orders", to: "/profile" },
+                { label: "My Profile", to: "/profile" },
+                { label: "Terms & Conditions", to: "/terms" },
+                { label: "Privacy Policy", to: "/privacy" },
+                { label: "Refund Policy", to: "/refund-policy" },
+                { label: "FAQ", to: "/faq" },
+              ].map(({ label, to }) => (
                 <li key={label}>
-                  <a href={href} className="text-white text-sm hover:opacity-75 transition-opacity">
+                  <Link href={to} className="text-white text-sm hover:opacity-75 transition-opacity">
                     {label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -123,23 +160,12 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Map Column */}
+          {/* Map Column — lazy loaded */}
           <div className="flex flex-col">
             <h4 className="font-semibold text-white text-sm uppercase tracking-widest mb-4 opacity-0 select-none hidden lg:block">
               Map
             </h4>
-            <div className="rounded-xl overflow-hidden border border-white/20 w-full flex-1" style={{ minHeight: "200px" }}>
-              <iframe
-                title="FishTokri Location"
-                src="https://maps.google.com/maps?q=Shiva+Nand+Society+Jambli+Naka+Khartan+Road+Thane+West+Thane+400601+Maharashtra&output=embed"
-                width="100%"
-                height="100%"
-                style={{ border: 0, minHeight: "200px" }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
+            <LazyMap />
           </div>
 
         </div>

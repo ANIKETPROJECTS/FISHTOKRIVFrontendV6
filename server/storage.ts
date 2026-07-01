@@ -225,23 +225,37 @@ export class MongoStorage implements IStorage {
   }
 
   async updateCustomerAddress(phone: string, addrId: string, updates: Partial<Omit<CustomerAddress, "id">>): Promise<Customer | undefined> {
+    const mongoose = await import("mongoose");
     const setFields: Record<string, any> = { updatedAt: new Date() };
     for (const [k, v] of Object.entries(updates)) {
       setFields[`addresses.$.${k}`] = v;
     }
+    let objectId: any;
+    try {
+      objectId = new mongoose.Types.ObjectId(addrId);
+    } catch {
+      objectId = addrId;
+    }
     const doc = await CustomerDbModel.findOneAndUpdate(
-      { phone, "addresses._id": addrId },
+      { phone, "addresses._id": objectId },
       { $set: setFields },
-      { returnDocument: "after" }
+      { new: true }
     ).lean();
     return doc ? toCustomer(doc) : undefined;
   }
 
   async deleteCustomerAddress(phone: string, addrId: string): Promise<Customer | undefined> {
+    const mongoose = await import("mongoose");
+    let objectId: any;
+    try {
+      objectId = new mongoose.Types.ObjectId(addrId);
+    } catch {
+      objectId = addrId;
+    }
     const doc = await CustomerDbModel.findOneAndUpdate(
       { phone },
-      { $pull: { addresses: { _id: addrId } }, $set: { updatedAt: new Date() } },
-      { returnDocument: "after" }
+      { $pull: { addresses: { _id: objectId } }, $set: { updatedAt: new Date() } },
+      { new: true }
     ).lean();
     return doc ? toCustomer(doc) : undefined;
   }
