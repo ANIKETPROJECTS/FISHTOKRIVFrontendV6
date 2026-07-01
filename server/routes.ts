@@ -1671,17 +1671,27 @@ export async function registerRoutes(
   });
 
   app.patch("/api/customer/me/addresses/:addrId", requireCustomer, async (req, res) => {
-    const parsed = insertCustomerAddressSchema.partial().safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
-    const customer = await storage.updateCustomerAddress(req.session.customerPhone!, req.params.addrId, parsed.data);
-    if (!customer) return res.status(404).json({ message: "Not found" });
-    res.json(customer);
+    try {
+      const parsed = insertCustomerAddressSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.message });
+      const customer = await storage.updateCustomerAddress(req.session.customerPhone!, req.params.addrId, parsed.data);
+      if (!customer) return res.status(404).json({ message: "Address not found" });
+      res.json(customer);
+    } catch (err) {
+      console.error("updateCustomerAddress error:", err);
+      res.status(500).json({ message: "Failed to update address" });
+    }
   });
 
   app.delete("/api/customer/me/addresses/:addrId", requireCustomer, async (req, res) => {
-    const customer = await storage.deleteCustomerAddress(req.session.customerPhone!, req.params.addrId);
-    if (!customer) return res.status(404).json({ message: "Not found" });
-    res.json(customer);
+    try {
+      const customer = await storage.deleteCustomerAddress(req.session.customerPhone!, req.params.addrId);
+      if (!customer) return res.status(404).json({ message: "Address not found" });
+      res.json(customer);
+    } catch (err) {
+      console.error("deleteCustomerAddress error:", err);
+      res.status(500).json({ message: "Failed to delete address" });
+    }
   });
 
   app.get("/api/customer/me/orders", requireCustomer, async (req, res) => {

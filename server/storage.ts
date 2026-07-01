@@ -226,19 +226,36 @@ export class MongoStorage implements IStorage {
 
   async updateCustomerAddress(phone: string, addrId: string, updates: Partial<Omit<CustomerAddress, "id">>): Promise<Customer | undefined> {
     const mongoose = await import("mongoose");
-    const setFields: Record<string, any> = { updatedAt: new Date() };
-    for (const [k, v] of Object.entries(updates)) {
-      setFields[`addresses.$.${k}`] = v;
+    const isObjectId = mongoose.Types.ObjectId.isValid(addrId) && /^[a-f\d]{24}$/i.test(addrId);
+
+    if (isObjectId) {
+      const setFields: Record<string, any> = { updatedAt: new Date() };
+      for (const [k, v] of Object.entries(updates)) {
+        setFields[`addresses.$.${k}`] = v;
+      }
+      const doc = await CustomerDbModel.findOneAndUpdate(
+        { phone, "addresses._id": new mongoose.Types.ObjectId(addrId) },
+        { $set: setFields },
+        { new: true }
+      ).lean();
+      return doc ? toCustomer(doc) : undefined;
     }
-    let objectId: any;
-    try {
-      objectId = new mongoose.Types.ObjectId(addrId);
-    } catch {
-      objectId = addrId;
+
+    // Composite key fallback: building|area|pincode|phone|idx
+    const [building, area, pincode] = addrId.split("|");
+    const customer = await CustomerDbModel.findOne({ phone }).lean() as any;
+    if (!customer) return undefined;
+    const addrIndex = (customer.addresses as any[]).findIndex((a: any) =>
+      a.building === building && a.area === area && (!pincode || a.pincode === pincode)
+    );
+    if (addrIndex === -1) return undefined;
+    const setByIndex: Record<string, any> = { updatedAt: new Date() };
+    for (const [k, v] of Object.entries(updates)) {
+      setByIndex[`addresses.${addrIndex}.${k}`] = v;
     }
     const doc = await CustomerDbModel.findOneAndUpdate(
-      { phone, "addresses._id": objectId },
-      { $set: setFields },
+      { phone },
+      { $set: setByIndex },
       { new: true }
     ).lean();
     return doc ? toCustomer(doc) : undefined;
@@ -246,15 +263,26 @@ export class MongoStorage implements IStorage {
 
   async deleteCustomerAddress(phone: string, addrId: string): Promise<Customer | undefined> {
     const mongoose = await import("mongoose");
-    let objectId: any;
-    try {
-      objectId = new mongoose.Types.ObjectId(addrId);
-    } catch {
-      objectId = addrId;
+    const isObjectId = mongoose.Types.ObjectId.isValid(addrId) && /^[a-f\d]{24}$/i.test(addrId);
+
+    if (isObjectId) {
+      const doc = await CustomerDbModel.findOneAndUpdate(
+        { phone },
+        { $pull: { addresses: { _id: new mongoose.Types.ObjectId(addrId) } }, $set: { updatedAt: new Date() } },
+        { new: true }
+      ).lean();
+      return doc ? toCustomer(doc) : undefined;
     }
+
+    // Composite key fallback: building|area|pincode|phone|idx
+    const [building, area, pincode] = addrId.split("|");
+    const pullMatch: Record<string, any> = {};
+    if (building) pullMatch.building = building;
+    if (area) pullMatch.area = area;
+    if (pincode) pullMatch.pincode = pincode;
     const doc = await CustomerDbModel.findOneAndUpdate(
       { phone },
-      { $pull: { addresses: { _id: objectId } }, $set: { updatedAt: new Date() } },
+      { $pull: { addresses: pullMatch }, $set: { updatedAt: new Date() } },
       { new: true }
     ).lean();
     return doc ? toCustomer(doc) : undefined;
