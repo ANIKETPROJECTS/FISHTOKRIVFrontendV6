@@ -4,9 +4,59 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { startInventorySyncScheduler } from "./inventorySync";
+import { SubHubModel } from "./adminDb";
+import { getHubModels } from "./hubConnections";
 
 const app = express();
 const httpServer = createServer(app);
+
+// ── sitemap.xml — registered FIRST so Vite cannot intercept it ───────────────
+app.get("/sitemap.xml", async (_req, res) => {
+  try {
+    const DOMAIN = "https://fishtokri.com";
+    const today = new Date().toISOString().split("T")[0];
+
+    const staticUrls = [
+      { loc: `${DOMAIN}/`, priority: "1.0", changefreq: "daily" },
+      { loc: `${DOMAIN}/combos`, priority: "0.7", changefreq: "weekly" },
+    ];
+
+    const hubs = await SubHubModel.find({ status: "Active" }).lean() as any[];
+    const categoryNames = new Set<string>();
+    const productIds = new Set<string>();
+
+    for (const hub of hubs) {
+      try {
+        const { Product, Category } = await getHubModels(hub.dbName);
+        const [cats, prods] = await Promise.all([
+          (Category as any).find({}).select("name").lean(),
+          (Product as any).find({ isArchived: { $ne: true } }).select("_id").lean(),
+        ]);
+        (cats as any[]).forEach((c: any) => { if (c.name) categoryNames.add(c.name); });
+        (prods as any[]).forEach((p: any) => productIds.add(p._id.toString()));
+      } catch { /* skip unreachable hub */ }
+    }
+
+    const categoryUrls = [...categoryNames].map(name => ({
+      loc: `${DOMAIN}/category/${encodeURIComponent(name)}`,
+      priority: "0.8", changefreq: "weekly",
+    }));
+    const productUrls = [...productIds].map(id => ({
+      loc: `${DOMAIN}/product/${id}`,
+      priority: "0.6", changefreq: "weekly",
+    }));
+
+    const all = [...staticUrls, ...categoryUrls, ...productUrls];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${all.map(u =>
+      `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`
+    ).join("\n")}\n</urlset>`;
+
+    res.set("Content-Type", "application/xml").send(xml);
+  } catch (err) {
+    console.error("[sitemap] Error:", err);
+    res.status(500).send("Failed to generate sitemap");
+  }
+});
 
 declare module "http" {
   interface IncomingMessage {

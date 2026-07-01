@@ -32,6 +32,7 @@ import recipesIconAnim from "@/assets/lottie/recipes-icon.json";
 import mayAlsoLikeAnim from "@/assets/lottie/may-also-like.json";
 
 import noImageImg from "@assets/Gemini_Generated_Image_z60vyrz60vyrz60v_1782896627484.png";
+import { SeoHead } from "@/components/SeoHead";
 
 function getFallbackImage(_category: string) {
   return noImageImg;
@@ -217,8 +218,43 @@ export default function ProductDetail() {
     return <div className="min-h-screen bg-background" />;
   }
 
+  const catKeyword = product.category?.toLowerCase() ?? "seafood";
   return (
     <div className="min-h-screen bg-background font-sans">
+      <SeoHead
+        title={`Buy ${product.name} Online in Mumbai | Fresh & Hygienically Cut`}
+        description={`Order ${product.name} online in Mumbai. 100% fresh ${catKeyword}, hygienically cleaned & cut, delivered same-day to your doorstep. Free delivery above ₹500. Order now on FishTokri.`}
+        canonical={`/product/${productId}`}
+        ogImage={product.imageUrl ?? undefined}
+        ogType="product"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fishtokri.com/" },
+              { "@type": "ListItem", "position": 2, "name": product.category, "item": `https://fishtokri.com/category/${encodeURIComponent(product.category)}` },
+              { "@type": "ListItem", "position": 3, "name": product.name, "item": `https://fishtokri.com/product/${productId}` },
+            ],
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": product.name,
+            "image": product.imageUrl ?? "https://fishtokri.com/og-default.png",
+            "description": `Fresh ${product.name}, hygienically cleaned and cut, delivered same-day across Mumbai.`,
+            "category": product.category,
+            "brand": { "@type": "Brand", "name": "FishTokri" },
+            "offers": {
+              "@type": "Offer",
+              "priceCurrency": "INR",
+              "price": String(product.price ?? 0),
+              "availability": product.status === "unavailable" ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+              "url": `https://fishtokri.com/product/${productId}`,
+            },
+          },
+        ]}
+      />
       <Header
         onSearchSubmit={(q) => setLocation(q ? `/?q=${encodeURIComponent(q)}` : "/")}
         collapsibleMobileSearch

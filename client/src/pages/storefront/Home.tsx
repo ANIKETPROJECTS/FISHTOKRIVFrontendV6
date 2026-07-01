@@ -14,6 +14,7 @@ import { ChevronLeft, Plus, Minus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { CarouselSlide, Category, Section, Combo } from "@shared/schema";
 import noImageImg from "@assets/Gemini_Generated_Image_z60vyrz60vyrz60v_1782896627484.png";
+import { SeoHead } from "@/components/SeoHead";
 
 function getFallbackImage(_category: string): string {
   return noImageImg;
@@ -261,6 +262,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
+      <SeoHead
+        title="Fresh Fish, Seafood, Chicken & Mutton Online in Mumbai"
+        description="Order 100% fresh fish, seafood, chicken & mutton online in Mumbai. Hygienically cut, cleaned & delivered to your doorstep. 60+ varieties. Free delivery above ₹500. Order now on FishTokri."
+        canonical="/"
+      />
       <audio ref={audioRef} src={welcomeAudio} />
       <Header onSearch={(q) => {
         setSearchQuery(q);

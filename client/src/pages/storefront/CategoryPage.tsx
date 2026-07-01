@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useRoute, useLocation, useSearch } from "wouter";
+import { SeoHead, CATEGORY_SEO } from "@/components/SeoHead";
 import { useQuery } from "@tanstack/react-query";
 import { useProducts } from "@/hooks/use-products";
 import { Header } from "@/components/storefront/Header";
@@ -89,8 +90,23 @@ export default function CategoryPage() {
     }
   };
 
+  const catSeo = CATEGORY_SEO[categoryName] ?? null;
+
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
+      <SeoHead
+        title={catSeo ? catSeo.title : `${categoryName} Online in Mumbai | Fresh & Hygienically Cut`}
+        description={catSeo ? catSeo.description : `Buy fresh ${categoryName.toLowerCase()} online in Mumbai. Hygienically cleaned, cut & delivered same-day. Order now on FishTokri.`}
+        canonical={`/category/${encodeURIComponent(categoryName)}`}
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://fishtokri.com/" },
+            { "@type": "ListItem", "position": 2, "name": categoryName, "item": `https://fishtokri.com/category/${encodeURIComponent(categoryName)}` },
+          ],
+        }}
+      />
       <Header onSearch={() => {}} />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

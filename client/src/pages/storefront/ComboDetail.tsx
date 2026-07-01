@@ -1,4 +1,5 @@
 import { useParams, useLocation } from "wouter";
+import { SeoHead } from "@/components/SeoHead";
 import { useCart } from "@/context/CartContext";
 import { useCustomer } from "@/context/CustomerContext";
 import { useCoupons } from "@/hooks/use-coupons";
@@ -532,6 +533,12 @@ export default function ComboDetail() {
 
   return (
     <div className="min-h-screen bg-background font-sans">
+      <SeoHead
+        title={`Buy ${combo.name} Combo Online in Mumbai | FishTokri`}
+        description={`Order ${combo.name} combo online in Mumbai. Fresh seafood & meat bundle, hygienically packed and delivered same-day. Order now on FishTokri.`}
+        canonical={`/combo/${id}`}
+        ogType="product"
+      />
       <Header
         onSearchSubmit={(q) => navigate(q ? `/?q=${encodeURIComponent(q)}` : "/")}
         collapsibleMobileSearch

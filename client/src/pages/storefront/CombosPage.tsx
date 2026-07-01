@@ -11,6 +11,7 @@ import { useCart } from "@/context/CartContext";
 import type { Section, Combo } from "@shared/schema";
 
 import noImageImg from "@assets/Gemini_Generated_Image_z60vyrz60vyrz60v_1782896627484.png";
+import { SeoHead } from "@/components/SeoHead";
 
 function getFallbackImage(_category: string): string {
   return noImageImg;
@@ -166,6 +167,11 @@ export default function CombosPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col font-sans">
+      <SeoHead
+        title="Combo Deals — Fresh Fish & Meat Bundles Online in Mumbai"
+        description="Order fresh seafood & meat combo deals online in Mumbai. Great value bundles of fish, prawns, chicken & mutton, hygienically packed and delivered same-day. Order now on FishTokri."
+        canonical="/combos"
+      />
       <Header />
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
