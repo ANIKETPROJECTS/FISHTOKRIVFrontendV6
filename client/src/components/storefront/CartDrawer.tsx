@@ -46,11 +46,7 @@ import {
 } from "@/components/ui/sheet";
 import type { CustomerAddress, Timeslot, Coupon } from "@shared/schema";
 
-import fishImg from "@assets/Gemini_Generated_Image_w6wqkkw6wqkkw6wq_(1)_1772713077919.png";
-import prawnsImg from "@assets/Gemini_Generated_Image_5xy0sd5xy0sd5xy0_1772713090650.png";
-import chickenImg from "@assets/Gemini_Generated_Image_g0ecb4g0ecb4g0ec_1772713219972.png";
-import muttonImg from "@assets/Gemini_Generated_Image_8fq0338fq0338fq0_1772713565349.png";
-import masalaImg from "@assets/Gemini_Generated_Image_4e60a64e60a64e60_1772713888468.png";
+import noImageImg from "@assets/Gemini_Generated_Image_z60vyrz60vyrz60v_1782896627484.png";
 import scooterImg from "@assets/animation-original_(51)_1779950354153.png";
 import whatsappIcon from "@assets/logo_(16)_1779950540352.png";
 import callIcon from "@assets/call_(2)_1779950579819.png";
@@ -457,16 +453,7 @@ export function CartDrawer() {
     return slot.label;
   }, [pincodeTimeDelay, format24to12, addMinutesToTime]);
 
-  const getFallbackImage = (category: string) => {
-    switch (category) {
-      case "Prawns": return prawnsImg;
-      case "Chicken": return chickenImg;
-      case "Mutton": return muttonImg;
-      case "Masalas": return masalaImg;
-      case "Combo": return fishImg;
-      default: return fishImg;
-    }
-  };
+  const getFallbackImage = (_category: string) => noImageImg;
 
   const openAddForm = () => {
     setAddForm({
