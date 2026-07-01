@@ -7,47 +7,11 @@ export function useDragScroll<T extends HTMLElement>() {
   const scrollLeft = useRef(0);
   const hasDragged = useRef(false);
 
-  const velocity = useRef(0);
-  const rafId = useRef<number | null>(null);
-
-  // ── Wheel: horizontal scroll on desktop mouse, but let page scroll when row is at boundary ──
-  const onWheel = useCallback((e: WheelEvent) => {
-    const el = ref.current;
-    if (!el) return;
-    if (el.scrollWidth <= el.clientWidth) return;
-
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-
-    // At left boundary scrolling further left → let page handle it
-    const atStart = el.scrollLeft <= 0;
-    // At right boundary scrolling further right → let page handle it
-    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 1;
-    if ((atStart && delta < 0) || (atEnd && delta > 0)) return;
-
-    e.preventDefault();
-    velocity.current += delta;
-    if (rafId.current !== null) cancelAnimationFrame(rafId.current);
-
-    const step = () => {
-      if (!ref.current) return;
-      ref.current.scrollLeft += velocity.current * 0.14;
-      velocity.current *= 0.78;
-      if (Math.abs(velocity.current) > 0.5) {
-        rafId.current = requestAnimationFrame(step);
-      } else {
-        velocity.current = 0;
-        rafId.current = null;
-      }
-    };
-    rafId.current = requestAnimationFrame(step);
-  }, []);
-
-  // ── Drag: attach to document so fast swipes don't stop at element edge ───
+  // ── Mouse drag: attach to document so fast swipes don't stop at edge ─────
   const onMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging.current) return;
     const el = ref.current;
     if (!el) return;
-    e.preventDefault();
     const x = e.pageX - el.offsetLeft;
     const walk = (x - startX.current) * 1.5;
     if (Math.abs(walk) > 4) hasDragged.current = true;
@@ -69,21 +33,18 @@ export function useDragScroll<T extends HTMLElement>() {
   const onMouseDown = useCallback((e: MouseEvent) => {
     const el = ref.current;
     if (!el) return;
-    if (rafId.current !== null) {
-      cancelAnimationFrame(rafId.current);
-      rafId.current = null;
-      velocity.current = 0;
-    }
     isDragging.current = true;
     hasDragged.current = false;
     startX.current = e.pageX - el.offsetLeft;
     scrollLeft.current = el.scrollLeft;
     el.style.cursor = "grabbing";
     el.style.userSelect = "none";
+    // Attach to document so drag continues even when mouse leaves the element
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
   }, [onMouseMove, onMouseUp]);
 
+  // Prevent click from firing when it was actually a drag
   const onClickCapture = useCallback((e: MouseEvent) => {
     if (hasDragged.current) {
       e.stopPropagation();
@@ -91,22 +52,26 @@ export function useDragScroll<T extends HTMLElement>() {
     }
   }, []);
 
+  // Block browser's native image/element ghost drag
+  const onDragStart = useCallback((e: DragEvent) => {
+    e.preventDefault();
+  }, []);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.cursor = "grab";
-    el.addEventListener("wheel", onWheel, { passive: false });
     el.addEventListener("mousedown", onMouseDown);
     el.addEventListener("click", onClickCapture, true);
+    el.addEventListener("dragstart", onDragStart);
     return () => {
-      el.removeEventListener("wheel", onWheel);
       el.removeEventListener("mousedown", onMouseDown);
       el.removeEventListener("click", onClickCapture, true);
+      el.removeEventListener("dragstart", onDragStart);
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
-      if (rafId.current !== null) cancelAnimationFrame(rafId.current);
     };
-  }, [onWheel, onMouseDown, onMouseMove, onMouseUp, onClickCapture]);
+  }, [onMouseDown, onMouseMove, onMouseUp, onClickCapture, onDragStart]);
 
   return ref;
 }
