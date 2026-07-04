@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/context/CartContext";
 import { useLocation } from "wouter";
 import type { Product } from "@shared/schema";
-const noImageImg = "/images/no-image.svg";
+import noImageImg from "@assets/Gemini_Generated_Image_z60vyrz60vyrz60v_1782896627484.png";
 
 const DUMMY_DETAILS: Record<string, { pieces: string; serves: string }> = {
   Fish:    { pieces: "2-3 Pieces", serves: "Serves 3" },

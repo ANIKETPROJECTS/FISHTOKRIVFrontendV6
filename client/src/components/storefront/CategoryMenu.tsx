@@ -3,11 +3,11 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import type { Category, Product } from "@shared/schema";
 
-const fishImg = "/images/fish.png";
-const prawnsImg = "/images/prawns.png";
-const chickenImg = "/images/chicken.png";
-const muttonImg = "/images/mutton.png";
-const masalaImg = "/images/masala.png";
+import fishImg from "@assets/Gemini_Generated_Image_w6wqkkw6wqkkw6wq_(1)_1772713077919.png";
+import prawnsImg from "@assets/Gemini_Generated_Image_5xy0sd5xy0sd5xy0_1772713090650.png";
+import chickenImg from "@assets/Gemini_Generated_Image_g0ecb4g0ecb4g0ec_1772713219972.png";
+import muttonImg from "@assets/Gemini_Generated_Image_8fq0338fq0338fq0_1772713565349.png";
+import masalaImg from "@assets/Gemini_Generated_Image_4e60a64e60a64e60_1772713888468.png";
 import menuIcon from "@assets/menu_1774777071510.png";
 import bagIcon from "@/assets/bag-icon.png";
 
