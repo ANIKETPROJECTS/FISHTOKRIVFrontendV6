@@ -99,21 +99,19 @@ export function ProductCard({ product }: { product: Product }) {
         <p className="text-sm text-muted-foreground mb-2.5 font-normal">
           {product.grossWeight && (
             <>
-              <span className="font-medium text-foreground/80">{product.grossWeight}g Gross</span>
+              <span className="font-medium text-foreground/80">{product.grossWeight}gm gross</span>
               <span>&nbsp;&nbsp;|&nbsp;&nbsp;</span>
             </>
           )}
           {piecesText && (
             <>
               <span className="font-medium text-foreground/80">{piecesText}</span>
-              {!piecesText.toLowerCase().includes("piece") && <span> Pieces</span>}
-              {(servesText || product.grossWeight) && <span>&nbsp;&nbsp;|&nbsp;&nbsp;</span>}
+              {product.netWeight && <span>&nbsp;&nbsp;|&nbsp;&nbsp;</span>}
             </>
           )}
-          {servesText && (
+          {product.netWeight && (
             <>
-              <span className="font-medium text-foreground/80">{servesText}</span>
-              {!servesText.toLowerCase().includes("serv") && <span> Serving</span>}
+              <span className="font-medium text-foreground/80">{product.netWeight}gm net</span>
             </>
           )}
         </p>
