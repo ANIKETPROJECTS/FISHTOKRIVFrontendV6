@@ -392,7 +392,7 @@ export default function ProductDetail() {
                     {product.grossWeight && (
                       <span className="whitespace-nowrap">
                         {product.grossWeight}
-                        <span className="font-normal ml-0.5">gm gross</span>
+                        <span className="font-normal ml-0.5"> gm gross</span>
                       </span>
                     )}
                     {product.grossWeight && product.netWeight && (
