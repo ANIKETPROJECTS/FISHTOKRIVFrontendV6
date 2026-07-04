@@ -178,6 +178,7 @@ export function Header({
             <input
               type="search"
               value={searchValue}
+              autoFocus={!!initialSearchValue}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
               onChange={(e) => handleChange(e.target.value)}
