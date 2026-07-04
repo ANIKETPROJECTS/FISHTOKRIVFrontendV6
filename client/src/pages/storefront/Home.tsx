@@ -14,14 +14,14 @@ import { useLocation } from "wouter";
 import { ChevronLeft, Plus, Minus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { CarouselSlide, Category, Section, Combo } from "@shared/schema";
-import noImageImg from "@assets/Gemini_Generated_Image_z60vyrz60vyrz60v_1782896627484.png";
+const noImageImg = "/images/no-image.svg";
 import { SeoHead } from "@/components/SeoHead";
 
 function getFallbackImage(_category: string): string {
   return noImageImg;
 }
 
-import welcomeAudio from "@assets/ElevenLabs_2026-03-05T15_00_59_Bella_-_Professional,_Bright,_W_1772722955169.mp3";
+const welcomeAudio = "/images/welcome.mp3";
 
 function ComboImages({ images }: { images: string[] }) {
   const n = images.length;

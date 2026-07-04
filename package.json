@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development node_modules/.bin/tsx server/index.ts",
-    "build": "npx tsx script/build.ts",
+    "build": "NODE_OPTIONS=--max-old-space-size=2048 npx tsx script/build.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc"
   },
