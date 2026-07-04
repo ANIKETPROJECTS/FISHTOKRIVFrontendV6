@@ -171,7 +171,7 @@ export function Header({
             <img src={searchImg} alt="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 object-contain z-10" />
             {/* Typewriter placeholder shown when empty & unfocused */}
             {!searchValue && !searchFocused && (
-              <div className="absolute left-10 top-1/2 -translate-y-1/2 z-10">
+              <div className="absolute left-10 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                 <TypewriterPlaceholder />
               </div>
             )}
@@ -278,13 +278,13 @@ export function Header({
           <form onSubmit={handleSubmit} className="relative">
             <img src={searchImg} alt="Search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 object-contain z-10" />
             {!searchValue && !searchFocused && (
-              <div className="absolute left-10 top-1/2 -translate-y-1/2 z-10">
+              <div className="absolute left-10 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
                 <TypewriterPlaceholder />
               </div>
             )}
             <input
               type="search"
-              autoFocus={collapsibleMobileSearch && mobileSearchOpen}
+              autoFocus={(collapsibleMobileSearch && mobileSearchOpen) || !!initialSearchValue}
               value={searchValue}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
