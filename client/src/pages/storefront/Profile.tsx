@@ -293,8 +293,11 @@ function downloadInvoicePDF(order: OrderRequest, items: OrderItem[], subtotal: n
   const couponDiscount = (order as any).coupon?.discountAmount ?? 0;
   const extraDiscount = Math.max(0, discount - couponDiscount);
   const isInstant = isExpressOrder(order);
-  const porterCharge = isInstant ? slotCharge : 0;
-  const deliveryFee = isInstant ? 0 : slotCharge;
+  const dbDeliveryCharge = (order as any).deliveryCharge;
+  // Prefer admin-set deliveryCharge when explicitly present (even if 0), else slotCharge
+  const effectiveCharge = dbDeliveryCharge != null ? (dbDeliveryCharge as number) : slotCharge;
+  const porterCharge = isInstant ? effectiveCharge : 0;
+  const deliveryFee = isInstant ? 0 : effectiveCharge;
 
   const payments: Array<{ mode: string; amount: number }> = (order as any).payments ?? [];
   const walletPaid = payments.filter(p => p.mode === "wallet").reduce((s, p) => s + (Number.isFinite(p.amount) ? p.amount : 0), 0);
@@ -441,10 +444,11 @@ function OrderCard({ order, productImageMap }: { order: OrderRequest; productIma
   const slotCharge = order.slotCharge ?? 0;
   const dbDeliveryCharge = order.deliveryCharge ?? 0;
   const isExpress = isExpressOrder(order);
-  // Porter charge: express orders use deliveryCharge (admin) or slotCharge (webapp)
-  const porterCharge = isExpress ? (dbDeliveryCharge || slotCharge) : 0;
-  // Regular delivery fee: non-express slotCharge
-  const deliveryFee = isExpress ? 0 : slotCharge;
+  // Effective charge: prefer admin-set deliveryCharge when explicitly present (even if 0), else slotCharge
+  const effectiveCharge = order.deliveryCharge != null ? dbDeliveryCharge : slotCharge;
+  // Porter charge for express orders; delivery fee for regular orders
+  const porterCharge = isExpress ? effectiveCharge : 0;
+  const deliveryFee = isExpress ? 0 : effectiveCharge;
   // Discounts: coupon discount and extra discount are separate fields
   const couponDiscount = order.coupon?.discountAmount ?? 0;
   const extraDiscount = order.extraDiscount ?? 0;
