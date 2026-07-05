@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCustomer } from "@/context/CustomerContext";
 import Lottie from "lottie-react";
 import fishAnimation from "@assets/fish_1776404909449.json";
-import otpAnimation from "@assets/animation-original_1776421716629.json";
+import otpAnimation from "@/assets/lottie/otp-animation.json";
 import successAnimation from "@assets/animation-original_(10)_1777277220026.json";
 import flagImg from "@assets/flag_(1)_1776403319572.png";
 import { FishTokriLogo } from "@/components/storefront/FishTokriLogo";
