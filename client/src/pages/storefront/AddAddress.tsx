@@ -187,8 +187,12 @@ export default function AddAddress() {
   };
 
   const save = () => {
-    if (!form.name || !form.phone || !form.building || !form.area) {
+    if (!form.name || !form.phone || !form.building || !form.area || !form.pincode) {
       toast({ title: "Please fill all required fields", variant: "destructive" });
+      return;
+    }
+    if (!/^\d{6}$/.test(form.pincode)) {
+      toast({ title: "Please enter a valid 6-digit pincode", variant: "destructive" });
       return;
     }
     const label =
