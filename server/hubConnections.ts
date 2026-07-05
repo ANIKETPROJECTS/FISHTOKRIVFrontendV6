@@ -132,6 +132,7 @@ const timeslotSchema = new mongoose.Schema({
   todaysOrderCount: { type: Number, default: 0 },
   nextDayOrderCount: { type: Number, default: 0 },
   limitedByOrders: { type: Boolean, default: false },
+  activeDays: [{ day: { type: String }, status: { type: String, enum: ["on", "off"], default: "on" } }],
 });
 
 const couponUsageSchema = new mongoose.Schema({
