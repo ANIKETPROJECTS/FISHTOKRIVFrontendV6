@@ -292,7 +292,7 @@ function downloadInvoicePDF(order: OrderRequest, items: OrderItem[], subtotal: n
   const couponCode = (order as any).coupon?.code ?? "";
   const couponDiscount = (order as any).coupon?.discountAmount ?? 0;
   const extraDiscount = Math.max(0, discount - couponDiscount);
-  const isInstant = isInstantOrder(order);
+  const isInstant = isExpressOrder(order);
   const porterCharge = isInstant ? slotCharge : 0;
   const deliveryFee = isInstant ? 0 : slotCharge;
 
