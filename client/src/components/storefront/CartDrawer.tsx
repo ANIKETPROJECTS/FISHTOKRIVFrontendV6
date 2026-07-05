@@ -630,16 +630,16 @@ export function CartDrawer() {
         orderPayments.push({ mode: cashMode, amount: finalTotal, reference: razorpayPaymentId ?? "", paidAt });
       }
     } else if (paymentMethod === "online") {
-      orderPayments.push({ mode: "upi", amount: rawTotal, reference: razorpayPaymentId ?? "", paidAt });
+      orderPayments.push({ mode: "upi", amount: afterCouponTotal, reference: razorpayPaymentId ?? "", paidAt });
     } else {
-      orderPayments.push({ mode: "cash", amount: rawTotal, reference: "", paidAt });
+      orderPayments.push({ mode: "cash", amount: afterCouponTotal, reference: "", paidAt });
     }
 
     const paidAmount = orderPayments
       .filter(p => p.mode !== "cash")
       .reduce((sum, p) => sum + p.amount, 0);
-    const dueAmount = rawTotal - paidAmount;
-    const paymentStatus = paidAmount === 0 ? "unpaid" : paidAmount >= rawTotal ? "paid" : "partial";
+    const dueAmount = afterCouponTotal - paidAmount;
+    const paymentStatus = paidAmount === 0 ? "unpaid" : paidAmount >= afterCouponTotal ? "paid" : "partial";
 
     return {
       customerName: selected.name || customer?.name || "",
@@ -665,7 +665,7 @@ export function CartDrawer() {
       subtotal,
       discount: discountAmount,
       slotCharge,
-      total: rawTotal,
+      total: afterCouponTotal,
       payments: orderPayments,
       paidAmount,
       dueAmount,
