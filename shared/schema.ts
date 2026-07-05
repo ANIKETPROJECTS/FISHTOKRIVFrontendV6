@@ -115,6 +115,11 @@ export type OrderItem = {
   imageUrl?: string | null;
 };
 
+export type TimeslotActiveDay = {
+  day: string;   // "sunday" | "monday" | ... | "saturday"
+  status: "on" | "off";
+};
+
 export type Timeslot = {
   id: string;
   label: string;
@@ -128,6 +133,7 @@ export type Timeslot = {
   todaysOrderCount: number;
   nextDayOrderCount: number;
   limitedByOrders: boolean;
+  activeDays: TimeslotActiveDay[];
 };
 
 export type OrderCoupon = {

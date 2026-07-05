@@ -1505,6 +1505,7 @@ export async function registerRoutes(
     todaysOrderCount: doc.todaysOrderCount ?? 0,
     nextDayOrderCount: doc.nextDayOrderCount ?? 0,
     limitedByOrders: doc.limitedByOrders ?? false,
+    activeDays: doc.activeDays ?? [],
   });
 
   app.get("/api/timeslots", async (req, res) => {

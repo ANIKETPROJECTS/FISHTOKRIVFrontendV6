@@ -310,9 +310,20 @@ export function CartDrawer() {
     return null;
   }, []);
 
+  // Returns true if the slot is active on the given Date's day of week
+  const isSlotActiveOnDay = useCallback((slot: Timeslot, date: Date): boolean => {
+    if (!slot.activeDays || slot.activeDays.length === 0) return true; // no config = always on
+    const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const dayName = dayNames[date.getDay()];
+    const entry = slot.activeDays.find(d => d.day.toLowerCase() === dayName);
+    return !entry || entry.status === "on";
+  }, []);
+
   const isSlotAvailable = useCallback((slot: Timeslot): boolean => {
     if (slot.isInstant) return true;
     const now = new Date();
+    // Hide slot if today's day is marked off
+    if (!isSlotActiveOnDay(slot, now)) return false;
     // A slot is unavailable 30 minutes before its START time.
     const startStr = extractSlotStartTime(slot);
     if (startStr) {
@@ -325,12 +336,16 @@ export function CartDrawer() {
     // Check today's order limit (always enforced when orderLimit > 0)
     if (slot.orderLimit > 0 && slot.todaysOrderCount >= slot.orderLimit) return false;
     return true;
-  }, [parseTimeStr, extractSlotStartTime]);
+  }, [parseTimeStr, extractSlotStartTime, isSlotActiveOnDay]);
 
   const availableTimeslots = timeslots.filter(isSlotAvailable);
-  const nextDayAvailableTimeslots = timeslots.filter(t =>
-    !t.isInstant && (t.orderLimit <= 0 || t.nextDayOrderCount < t.orderLimit)
-  );
+  const nextDayAvailableTimeslots = timeslots.filter(t => {
+    if (t.isInstant) return false;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    if (!isSlotActiveOnDay(t, tomorrow)) return false;
+    return t.orderLimit <= 0 || t.nextDayOrderCount < t.orderLimit;
+  });
   const displayTimeslots = isNextDay ? nextDayAvailableTimeslots : availableTimeslots;
   const selectedTimeslot = (isNextDay ? nextDayAvailableTimeslots : availableTimeslots).find(t => t.id === selectedTimeslotId) ?? null;
 
