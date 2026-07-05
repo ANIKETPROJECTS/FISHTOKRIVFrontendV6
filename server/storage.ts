@@ -242,11 +242,14 @@ export class MongoStorage implements IStorage {
     }
 
     // Composite key fallback: building|area|pincode|phone|idx
-    const [building, area, pincode] = addrId.split("|");
+    const parts = addrId.split("|");
+    const [building, area, pincode] = parts;
     const customer = await CustomerDbModel.findOne({ phone }).lean() as any;
     if (!customer) return undefined;
     const addrIndex = (customer.addresses as any[]).findIndex((a: any) =>
-      a.building === building && a.area === area && (!pincode || a.pincode === pincode)
+      String(a.building).trim() === String(building).trim() &&
+      String(a.area).trim() === String(area).trim() &&
+      (!pincode || String(a.pincode).trim() === String(pincode).trim())
     );
     if (addrIndex === -1) return undefined;
     const setByIndex: Record<string, any> = { updatedAt: new Date() };
@@ -275,11 +278,17 @@ export class MongoStorage implements IStorage {
     }
 
     // Composite key fallback: building|area|pincode|phone|idx
+    // Use $pull with type-flexible pincode match (old docs may store pincode as number)
     const [building, area, pincode] = addrId.split("|");
     const pullMatch: Record<string, any> = {};
-    if (building) pullMatch.building = building;
-    if (area) pullMatch.area = area;
-    if (pincode) pullMatch.pincode = pincode;
+    if (building) pullMatch.building = building.trim();
+    if (area) pullMatch.area = area.trim();
+    if (pincode) {
+      const pincodeNum = Number(pincode);
+      pullMatch.pincode = isNaN(pincodeNum)
+        ? pincode.trim()
+        : { $in: [pincode.trim(), pincodeNum] };
+    }
     const doc = await CustomerDbModel.findOneAndUpdate(
       { phone },
       { $pull: { addresses: pullMatch }, $set: { updatedAt: new Date() } },
