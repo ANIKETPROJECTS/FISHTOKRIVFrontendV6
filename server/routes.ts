@@ -1619,10 +1619,6 @@ export async function registerRoutes(
         req.session.save((err) => (err ? reject(err) : resolve()));
       });
 
-      // Send welcome WhatsApp message (fire-and-forget)
-      const displayName = (customer as any)?.name || "there";
-      sendWhatsApp("welcome_to_fishtokri", normalised, [displayName]).catch(() => {});
-
       res.json(customer);
     } catch (err: any) {
       console.error("[verify-otp] Error:", err);
